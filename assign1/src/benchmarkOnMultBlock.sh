@@ -80,10 +80,10 @@ run_block_benchmark() {
     local INPUT="3\n${SIZE}\n${BK}\n0\n"
 
     echo "  perf stat (basic) ..." | tee -a "$RESULTS_FILE"
-    OUT_B=$(echo -e "$INPUT" | perf stat -e "$PERF_EVENTS" ./matrix_cpp 2>&1)
+    OUT_B=$(echo -e "$INPUT" | perf stat -e "$PERF_EVENTS" -- ./matrix_cpp 2>&1) || true
 
     echo "  perf stat (extended) ..." | tee -a "$RESULTS_FILE"
-    OUT_E=$(echo -e "$INPUT" | perf stat -e "$PERF_EVENTS_EXT" ./matrix_cpp 2>&1) || true
+    OUT_E=$(echo -e "$INPUT" | perf stat -e "$PERF_EVENTS_EXT" -- ./matrix_cpp 2>&1) || true
 
     local T=$(extract_time "$OUT_B")
     local GF=$(calc_gflops "$SIZE" "$T")

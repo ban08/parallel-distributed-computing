@@ -79,10 +79,10 @@ run_benchmark() {
     echo "----- $LANG | OnMultLine | ${SIZE}x${SIZE} -----" | tee -a "$RESULTS_FILE"
 
     echo "  perf stat (basic) ..." | tee -a "$RESULTS_FILE"
-    OUT_B=$(echo -e "$MENU_INPUT" | perf stat -e "$PERF_EVENTS" $CMD 2>&1)
+    OUT_B=$(echo -e "$MENU_INPUT" | perf stat -e "$PERF_EVENTS" -- $CMD 2>&1) || true
 
     echo "  perf stat (extended) ..." | tee -a "$RESULTS_FILE"
-    OUT_E=$(echo -e "$MENU_INPUT" | perf stat -e "$PERF_EVENTS_EXT" $CMD 2>&1) || true
+    OUT_E=$(echo -e "$MENU_INPUT" | perf stat -e "$PERF_EVENTS_EXT" -- $CMD 2>&1) || true
 
     local T=$(extract_time "$OUT_B")
     local GF=$(calc_gflops "$SIZE" "$T")
