@@ -56,7 +56,15 @@ javac MatrixProduct.java
 echo "Done." | tee -a "$RESULTS_FILE"
 
 # --- Helpers ---
-extract_time() { grep -oP 'Time:\s+\K[0-9]+\.[0-9]+' <<< "$1" || echo "N/A"; }
+extract_time() {
+    # Handle both '.' and ',' as decimal separator (Java uses locale-dependent formatting)
+    local val=$(grep -oP 'Time:\s+\K[0-9]+[.,][0-9]+' <<< "$1" | head -1)
+    if [[ -n "$val" ]]; then
+        echo "${val/,/.}"   # normalise comma → dot
+    else
+        echo "N/A"
+    fi
+}
 
 extract_perf_value() {
     local val=$(echo "$1" | grep -w "$2" | head -n1 | awk '{print $1}' | tr -d ',')
@@ -76,21 +84,23 @@ run_benchmark() {
     echo "" | tee -a "$RESULTS_FILE"
     echo "----- $LANG | OnMult | ${SIZE}x${SIZE} -----" | tee -a "$RESULTS_FILE"
 
-    # Write menu input to a temp file 
+    # Temp files for input, program output, and perf output
     local TMPINPUT=$(mktemp)
+    local TMPPROG_B=$(mktemp)
+    local TMPPROG_E=$(mktemp)
     local TMPPERF_B=$(mktemp)
     local TMPPERF_E=$(mktemp)
     printf '%b' "$MENU_INPUT" > "$TMPINPUT"
 
     echo "  perf stat (basic) ..." | tee -a "$RESULTS_FILE"
-    PROG_OUT_B=$(perf stat -e "$PERF_EVENTS" -o "$TMPPERF_B" -- $CMD < "$TMPINPUT" 2>&1) || true
+    perf stat -e "$PERF_EVENTS" -o "$TMPPERF_B" -- $CMD < "$TMPINPUT" > "$TMPPROG_B" 2>&1 || true
 
     echo "  perf stat (extended) ..." | tee -a "$RESULTS_FILE"
-    PROG_OUT_E=$(perf stat -e "$PERF_EVENTS_EXT" -o "$TMPPERF_E" -- $CMD < "$TMPINPUT" 2>&1) || true
+    perf stat -e "$PERF_EVENTS_EXT" -o "$TMPPERF_E" -- $CMD < "$TMPINPUT" > "$TMPPROG_E" 2>&1 || true
 
-    # Combine program stdout with perf stats for parsing
-    local OUT_B="$PROG_OUT_B"$'\n'"$(cat "$TMPPERF_B")"
-    local OUT_E="$PROG_OUT_E"$'\n'"$(cat "$TMPPERF_E")"
+    # Combine program output + perf stats for parsing
+    local OUT_B=$(cat "$TMPPROG_B")$'\n'$(cat "$TMPPERF_B")
+    local OUT_E=$(cat "$TMPPROG_E")$'\n'$(cat "$TMPPERF_E")
 
     local T=$(extract_time "$OUT_B")
     local GF=$(calc_gflops "$SIZE" "$T")
@@ -102,12 +112,14 @@ run_benchmark() {
     echo "$LINE" >> "$CSV_FILE"
 
     echo "" >> "$RESULTS_FILE"
+    echo "  [program output]:" >> "$RESULTS_FILE"
+    cat "$TMPPROG_B" >> "$RESULTS_FILE"
     echo "  [perf basic]:" >> "$RESULTS_FILE"
     cat "$TMPPERF_B" >> "$RESULTS_FILE"
     echo "  [perf extended]:" >> "$RESULTS_FILE"
     cat "$TMPPERF_E" >> "$RESULTS_FILE"
 
-    rm -f "$TMPINPUT" "$TMPPERF_B" "$TMPPERF_E"
+    rm -f "$TMPINPUT" "$TMPPROG_B" "$TMPPROG_E" "$TMPPERF_B" "$TMPPERF_E"
 }
 
 # --- Run ---
