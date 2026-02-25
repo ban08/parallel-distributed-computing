@@ -77,13 +77,20 @@ run_block_benchmark() {
     echo "----- C++ | OnMultBlock | ${SIZE}x${SIZE} | block=${BK} -----" | tee -a "$RESULTS_FILE"
 
     # Menu: option 3, size, block size, then exit
-    local INPUT="3\n${SIZE}\n${BK}\n0\n"
+    local TMPINPUT=$(mktemp)
+    local TMPPERF_B=$(mktemp)
+    local TMPPERF_E=$(mktemp)
+    printf '3\n%s\n%s\n0\n' "$SIZE" "$BK" > "$TMPINPUT"
 
     echo "  perf stat (basic) ..." | tee -a "$RESULTS_FILE"
-    OUT_B=$(echo -e "$INPUT" | perf stat -e "$PERF_EVENTS" -- ./matrix_cpp 2>&1) || true
+    PROG_OUT_B=$(perf stat -e "$PERF_EVENTS" -o "$TMPPERF_B" -- ./matrix_cpp < "$TMPINPUT" 2>&1) || true
 
     echo "  perf stat (extended) ..." | tee -a "$RESULTS_FILE"
-    OUT_E=$(echo -e "$INPUT" | perf stat -e "$PERF_EVENTS_EXT" -- ./matrix_cpp 2>&1) || true
+    PROG_OUT_E=$(perf stat -e "$PERF_EVENTS_EXT" -o "$TMPPERF_E" -- ./matrix_cpp < "$TMPINPUT" 2>&1) || true
+
+    # Combine program stdout with perf stats for parsing
+    local OUT_B="$PROG_OUT_B"$'\n'"$(cat "$TMPPERF_B")"
+    local OUT_E="$PROG_OUT_E"$'\n'"$(cat "$TMPPERF_E")"
 
     local T=$(extract_time "$OUT_B")
     local GF=$(calc_gflops "$SIZE" "$T")
@@ -96,9 +103,11 @@ run_block_benchmark() {
 
     echo "" >> "$RESULTS_FILE"
     echo "  [perf basic]:" >> "$RESULTS_FILE"
-    echo "$OUT_B" | grep -A 100 "Performance counter stats" >> "$RESULTS_FILE" 2>/dev/null || echo "$OUT_B" >> "$RESULTS_FILE"
+    cat "$TMPPERF_B" >> "$RESULTS_FILE"
     echo "  [perf extended]:" >> "$RESULTS_FILE"
-    echo "$OUT_E" | grep -A 100 "Performance counter stats" >> "$RESULTS_FILE" 2>/dev/null || echo "$OUT_E" >> "$RESULTS_FILE"
+    cat "$TMPPERF_E" >> "$RESULTS_FILE"
+
+    rm -f "$TMPINPUT" "$TMPPERF_B" "$TMPPERF_E"
 }
 
 # --- Run all combinations ---
