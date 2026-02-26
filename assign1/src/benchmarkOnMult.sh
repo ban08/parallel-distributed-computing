@@ -127,7 +127,7 @@ for S in "${SIZES[@]}"; do run_benchmark "C++" "./matrix_cpp" "$S" "1\n${S}\n0\n
 
 echo "" | tee -a "$RESULTS_FILE"
 echo "===== Java onMult =====" | tee -a "$RESULTS_FILE"
-for S in "${SIZES[@]}"; do run_benchmark "Java" "java MatrixProduct" "$S" "1\n${S}\n0\n"; done
+for S in "${SIZES[@]}"; do run_benchmark "Java" "java -Xmx4g -cp . MatrixProduct" "$S" "1\n${S}\n0\n"; done
 
 # --- Summary ---
 echo "" | tee -a "$RESULTS_FILE"

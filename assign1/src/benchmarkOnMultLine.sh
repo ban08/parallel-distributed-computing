@@ -129,7 +129,7 @@ for S in "${SIZES_CPP_EXTRA[@]}"; do run_benchmark "C++" "./matrix_cpp" "$S" "2\
 
 echo "" | tee -a "$RESULTS_FILE"
 echo "===== Java onMultLine (1024..3072) =====" | tee -a "$RESULTS_FILE"
-for S in "${SIZES_BOTH[@]}"; do run_benchmark "Java" "java MatrixProduct" "$S" "2\n${S}\n0\n"; done
+for S in "${SIZES_BOTH[@]}"; do run_benchmark "Java" "java -Xmx4g -cp . MatrixProduct" "$S" "2\n${S}\n0\n"; done
 
 # --- Summary ---
 echo "" | tee -a "$RESULTS_FILE"
