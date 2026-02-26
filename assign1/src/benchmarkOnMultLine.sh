@@ -59,10 +59,17 @@ javac MatrixProduct.java
 echo "Done." | tee -a "$RESULTS_FILE"
 
 # --- Helpers ---
-extract_time() { grep -oP 'Time:\s+\K[0-9]+\.[0-9]+' <<< "$1" || echo "N/A"; }
+extract_time_from_file() {
+    local val=$(grep -oP 'Time:\s+\K[0-9]+[.,][0-9]+' "$1" 2>/dev/null | head -1)
+    if [[ -n "$val" ]]; then
+        echo "${val/,/.}"
+    else
+        echo "N/A"
+    fi
+}
 
-extract_perf_value() {
-    local val=$(echo "$1" | grep -w "$2" | head -n1 | awk '{print $1}' | tr -d ',')
+extract_perf_value_from_file() {
+    local val=$(grep -w "$2" "$1" 2>/dev/null | head -n1 | awk '{print $1}' | tr -d ',')
     [[ "$val" =~ ^[0-9]+(\.[0-9]+)?$ ]] && echo "$val" || echo ""
 }
 
@@ -78,38 +85,37 @@ run_benchmark() {
     echo "" | tee -a "$RESULTS_FILE"
     echo "----- $LANG | OnMultLine | ${SIZE}x${SIZE} -----" | tee -a "$RESULTS_FILE"
 
-    # Write menu input to a temp file (more reliable than piping for JVM)
     local TMPINPUT=$(mktemp)
+    local TMPPROG_B=$(mktemp)
+    local TMPPROG_E=$(mktemp)
     local TMPPERF_B=$(mktemp)
     local TMPPERF_E=$(mktemp)
     printf '%b' "$MENU_INPUT" > "$TMPINPUT"
 
     echo "  perf stat (basic) ..." | tee -a "$RESULTS_FILE"
-    PROG_OUT_B=$(perf stat -e "$PERF_EVENTS" -o "$TMPPERF_B" -- $CMD < "$TMPINPUT" 2>&1) || true
+    LC_ALL=C perf stat -e "$PERF_EVENTS" -o "$TMPPERF_B" -- $CMD < "$TMPINPUT" > "$TMPPROG_B" 2>&1 || true
 
     echo "  perf stat (extended) ..." | tee -a "$RESULTS_FILE"
-    PROG_OUT_E=$(perf stat -e "$PERF_EVENTS_EXT" -o "$TMPPERF_E" -- $CMD < "$TMPINPUT" 2>&1) || true
+    LC_ALL=C perf stat -e "$PERF_EVENTS_EXT" -o "$TMPPERF_E" -- $CMD < "$TMPINPUT" > "$TMPPROG_E" 2>&1 || true
 
-    # Combine program stdout with perf stats for parsing
-    local OUT_B="$PROG_OUT_B"$'\n'"$(cat "$TMPPERF_B")"
-    local OUT_E="$PROG_OUT_E"$'\n'"$(cat "$TMPPERF_E")"
-
-    local T=$(extract_time "$OUT_B")
+    local T=$(extract_time_from_file "$TMPPROG_B")
     local GF=$(calc_gflops "$SIZE" "$T")
     echo "  Time: ${T}s | GFlop/s: ${GF}" | tee -a "$RESULTS_FILE"
 
     local LINE="$LANG,$SIZE,$T,$GF"
-    for ev in "${EVENTS_BASIC[@]}"; do LINE="$LINE,$(extract_perf_value "$OUT_B" "$ev")"; done
-    for ev in "${EVENTS_EXT[@]}"; do LINE="$LINE,$(extract_perf_value "$OUT_E" "$ev")"; done
+    for ev in "${EVENTS_BASIC[@]}"; do LINE="$LINE,$(extract_perf_value_from_file "$TMPPERF_B" "$ev")"; done
+    for ev in "${EVENTS_EXT[@]}"; do LINE="$LINE,$(extract_perf_value_from_file "$TMPPERF_E" "$ev")"; done
     echo "$LINE" >> "$CSV_FILE"
 
     echo "" >> "$RESULTS_FILE"
+    echo "  [program output]:" >> "$RESULTS_FILE"
+    cat "$TMPPROG_B" >> "$RESULTS_FILE"
     echo "  [perf basic]:" >> "$RESULTS_FILE"
     cat "$TMPPERF_B" >> "$RESULTS_FILE"
     echo "  [perf extended]:" >> "$RESULTS_FILE"
     cat "$TMPPERF_E" >> "$RESULTS_FILE"
 
-    rm -f "$TMPINPUT" "$TMPPERF_B" "$TMPPERF_E"
+    rm -f "$TMPINPUT" "$TMPPROG_B" "$TMPPROG_E" "$TMPPERF_B" "$TMPPERF_E"
 }
 
 # --- Run ---
@@ -123,7 +129,7 @@ for S in "${SIZES_CPP_EXTRA[@]}"; do run_benchmark "C++" "./matrix_cpp" "$S" "2\
 
 echo "" | tee -a "$RESULTS_FILE"
 echo "===== Java onMultLine (1024..3072) =====" | tee -a "$RESULTS_FILE"
-for S in "${SIZES_BOTH[@]}"; do run_benchmark "Java" "java MatrixProduct" "$S" "2\n${S}\n0\n"; done
+for S in "${SIZES_BOTH[@]}"; do run_benchmark "Java" "java -Xmx4g -cp . MatrixProduct" "$S" "2\n${S}\n0\n"; done
 
 # --- Summary ---
 echo "" | tee -a "$RESULTS_FILE"
