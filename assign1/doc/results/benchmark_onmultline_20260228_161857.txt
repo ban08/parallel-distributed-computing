@@ -876,3 +876,1265 @@ Size   | C++ Time     | C++ GF/s     | Java Time    | Java GF/s
 
 CSV: ../doc/results/benchmark_onmultline_20260228_161857.csv
 Done!
+
+=================================================================
+ Benchmark: OnMultLine (Part 1.2)  —  RUN 20260310_111513
+ Date: Tue Mar 10 11:15:13 AM WET 2026
+ Both:      1024 1536 2048 2560 3072
+ C++ extra: 4096 6144 8192 10240
+=================================================================
+
+Compiling C++ (-O2) and Java ...
+Done.
+
+===== C++ OnMultLine (1024..3072) =====
+
+----- C++ | OnMultLine | 1024x1024 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 0.285s | GFlop/s: 7.5350
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 0.285 seconds
+Result matrix: 
+524800 524800 524800 524800 524800 524800 524800 524800 524800 524800 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:15:13 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+         294891465      task-clock                       #    0.998 CPUs utilized             
+         850252551      cpu_atom/instructions/           #    1.10  insn per cycle              (0.13%)
+        8660745728      cpu_core/instructions/           #    5.88  insn per cycle              (99.87%)
+         774043066      cpu_atom/cycles/                 #    2.625 GHz                         (0.13%)
+        1471982537      cpu_core/cycles/                 #    4.992 GHz                         (99.87%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+          24556704      cpu_core/L1-dcache-load-misses/  #    1.14% of all L1-dcache accesses   (99.87%)
+         207597577      cpu_atom/L1-dcache-loads/        #  703.980 M/sec                       (0.13%)
+        2161884280      cpu_core/L1-dcache-loads/        #    7.331 G/sec                       (99.87%)
+                 0      cpu_atom/LLC-load-misses/                                               (0.13%)
+             50451      cpu_core/LLC-load-misses/        #   11.53% of all LL-cache accesses    (99.87%)
+           1030428      cpu_atom/LLC-loads/              #    3.494 M/sec                       (0.13%)
+            437630      cpu_core/LLC-loads/              #    1.484 M/sec                       (99.87%)
+
+       0.295598430 seconds time elapsed
+
+       0.287379000 seconds user
+       0.008010000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:15:13 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+         126900767      cpu_core/mem_load_retired.l1_miss/                                        (95.90%)
+          11396871      cpu_core/mem_load_retired.l2_miss/                                        (95.90%)
+
+       0.348196007 seconds time elapsed
+
+       0.339050000 seconds user
+       0.009001000 seconds sys
+
+
+
+----- C++ | OnMultLine | 1536x1536 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 1.156s | GFlop/s: 6.2697
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 1.156 seconds
+Result matrix: 
+1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:15:14 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+        1173602434      task-clock                       #    0.999 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+       29126803441      cpu_core/instructions/           #    5.05  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+        5770655335      cpu_core/cycles/                 #    4.917 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+         229161034      cpu_core/L1-dcache-load-misses/  #    3.15% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+        7274236923      cpu_core/L1-dcache-loads/        #    6.198 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+           3200247      cpu_core/LLC-load-misses/        #   37.83% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+           8460471      cpu_core/LLC-loads/              #    7.209 M/sec                     
+
+       1.174367640 seconds time elapsed
+
+       1.161126000 seconds user
+       0.013001000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:15:15 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+         318709914      cpu_core/mem_load_retired.l1_miss/                                        (99.33%)
+          31408561      cpu_core/mem_load_retired.l2_miss/                                        (99.33%)
+
+       1.168316648 seconds time elapsed
+
+       1.153792000 seconds user
+       0.013997000 seconds sys
+
+
+
+----- C++ | OnMultLine | 2048x2048 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 3.496s | GFlop/s: 4.9142
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 3.496 seconds
+Result matrix: 
+2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:15:16 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+        3525360563      task-clock                       #    1.000 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+       68976081464      cpu_core/instructions/           #    3.79  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+       18222328309      cpu_core/cycles/                 #    5.169 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+         800188621      cpu_core/L1-dcache-load-misses/  #    4.64% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+       17230554803      cpu_core/L1-dcache-loads/        #    4.888 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+          82693216      cpu_core/LLC-load-misses/        #   57.72% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+         143271030      cpu_core/LLC-loads/              #   40.640 M/sec                     
+
+       3.527078958 seconds time elapsed
+
+       3.500597000 seconds user
+       0.024989000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:15:20 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+         813744069      cpu_core/mem_load_retired.l1_miss/                                        (99.56%)
+         128384077      cpu_core/mem_load_retired.l2_miss/                                        (99.56%)
+
+       3.489598250 seconds time elapsed
+
+       3.460204000 seconds user
+       0.027993000 seconds sys
+
+
+
+----- C++ | OnMultLine | 2560x2560 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 7.402s | GFlop/s: 4.5332
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 7.402 seconds
+Result matrix: 
+3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:15:23 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+        7446970004      task-clock                       #    1.000 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+      134647089543      cpu_core/instructions/           #    3.54  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+       37995135625      cpu_core/cycles/                 #    5.102 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+         929247289      cpu_core/L1-dcache-load-misses/  #    2.76% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+       33640007973      cpu_core/L1-dcache-loads/        #    4.517 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+         320331272      cpu_core/LLC-load-misses/        #   97.16% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+         329697800      cpu_core/LLC-loads/              #   44.273 M/sec                     
+
+       7.449281711 seconds time elapsed
+
+       7.408115000 seconds user
+       0.038990000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:15:31 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+        1633223379      cpu_core/mem_load_retired.l1_miss/                                        (99.85%)
+         489986411      cpu_core/mem_load_retired.l2_miss/                                        (99.85%)
+
+       7.780770946 seconds time elapsed
+
+       7.741583000 seconds user
+       0.036988000 seconds sys
+
+
+
+----- C++ | OnMultLine | 3072x3072 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 12.830s | GFlop/s: 4.5193
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 12.830 seconds
+Result matrix: 
+4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:15:39 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+       12896053682      task-clock                       #    1.000 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+      232577059210      cpu_core/instructions/           #    3.56  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+       65403233809      cpu_core/cycles/                 #    5.072 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+        1974726874      cpu_core/L1-dcache-load-misses/  #    3.40% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+       58112370021      cpu_core/L1-dcache-loads/        #    4.506 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+         414479088      cpu_core/LLC-load-misses/        #   98.18% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+         422167507      cpu_core/LLC-loads/              #   32.736 M/sec                     
+
+      12.900185359 seconds time elapsed
+
+      12.838287000 seconds user
+       0.057983000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:15:52 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+        2394423840      cpu_core/mem_load_retired.l1_miss/                                        (99.89%)
+         561243184      cpu_core/mem_load_retired.l2_miss/                                        (99.89%)
+
+      13.015548442 seconds time elapsed
+
+      12.953826000 seconds user
+       0.057985000 seconds sys
+
+
+
+===== C++ OnMultLine (4096..10240) =====
+
+----- C++ | OnMultLine | 4096x4096 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 33.120s | GFlop/s: 4.1497
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 33.120 seconds
+Result matrix: 
+8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:16:05 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+       33228351384      task-clock                       #    1.000 CPUs utilized             
+      107305708511      cpu_atom/instructions/           #    0.99  insn per cycle              (0.02%)
+      551145046989      cpu_core/instructions/           #    3.32  insn per cycle              (99.98%)
+      108588255192      cpu_atom/cycles/                 #    3.268 GHz                         (0.02%)
+      165951043728      cpu_core/cycles/                 #    4.994 GHz                         (99.98%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+        9411957583      cpu_core/L1-dcache-load-misses/  #    6.83% of all L1-dcache accesses   (99.98%)
+       21694673152      cpu_atom/L1-dcache-loads/        #  652.896 M/sec                       (0.02%)
+      137728808472      cpu_core/L1-dcache-loads/        #    4.145 G/sec                       (99.98%)
+            235087      cpu_atom/LLC-load-misses/        #    0.70% of all LL-cache accesses    (0.02%)
+         993295684      cpu_core/LLC-load-misses/        #   98.40% of all LL-cache accesses    (99.98%)
+          33798787      cpu_atom/LLC-loads/              #    1.017 M/sec                       (0.02%)
+        1009437290      cpu_core/LLC-loads/              #   30.379 M/sec                       (99.98%)
+
+      33.236840401 seconds time elapsed
+
+      33.138391000 seconds user
+       0.088974000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:16:38 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+       10214709259      cpu_core/mem_load_retired.l1_miss/                                        (99.98%)
+        1036624823      cpu_core/mem_load_retired.l2_miss/                                        (99.98%)
+
+      33.879516842 seconds time elapsed
+
+      33.781052000 seconds user
+       0.089976000 seconds sys
+
+
+
+----- C++ | OnMultLine | 6144x6144 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+
+=================================================================
+ Benchmark: OnMultLine (Part 1.2)  —  RUN 20260310_114009
+ Date: Tue Mar 10 11:40:09 AM WET 2026
+ Both:      1024 1536 2048 2560 3072
+ C++ extra: 4096 6144 8192 10240
+=================================================================
+
+Compiling C++ (-O2) and Java ...
+Done.
+
+===== C++ OnMultLine (1024..3072) =====
+
+----- C++ | OnMultLine | 1024x1024 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 0.283s | GFlop/s: 7.5883
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 0.283 seconds
+Result matrix: 
+524800 524800 524800 524800 524800 524800 524800 524800 524800 524800 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:40:10 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+         291017817      task-clock                       #    0.998 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+        8648283750      cpu_core/instructions/           #    5.90  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+        1465901593      cpu_core/cycles/                 #    5.037 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+          24038058      cpu_core/L1-dcache-load-misses/  #    1.11% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+        2158875985      cpu_core/L1-dcache-loads/        #    7.418 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+             38476      cpu_core/LLC-load-misses/        #   10.12% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+            380261      cpu_core/LLC-loads/              #    1.307 M/sec                     
+
+       0.291571748 seconds time elapsed
+
+       0.283547000 seconds user
+       0.007987000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:40:10 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+          39660154      cpu_core/mem_load_retired.l1_miss/                                        (98.99%)
+           2171213      cpu_core/mem_load_retired.l2_miss/                                        (98.99%)
+
+       0.294793664 seconds time elapsed
+
+       0.285712000 seconds user
+       0.008990000 seconds sys
+
+
+
+----- C++ | OnMultLine | 1536x1536 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 1.039s | GFlop/s: 6.9757
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 1.039 seconds
+Result matrix: 
+1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 1.18042e+06 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:40:11 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+        1057330482      task-clock                       #    0.999 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+       29123321204      cpu_core/instructions/           #    5.37  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+        5418656620      cpu_core/cycles/                 #    5.125 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+         159219389      cpu_core/L1-dcache-load-misses/  #    2.19% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+        7273569379      cpu_core/L1-dcache-loads/        #    6.879 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+           1837490      cpu_core/LLC-load-misses/        #   61.38% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+           2993587      cpu_core/LLC-loads/              #    2.831 M/sec                     
+
+       1.058057050 seconds time elapsed
+
+       1.042725000 seconds user
+       0.014996000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:40:12 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+         454097552      cpu_core/mem_load_retired.l1_miss/                                        (98.68%)
+          52200683      cpu_core/mem_load_retired.l2_miss/                                        (98.68%)
+
+       1.233295194 seconds time elapsed
+
+       1.212986000 seconds user
+       0.019999000 seconds sys
+
+
+
+----- C++ | OnMultLine | 2048x2048 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 3.388s | GFlop/s: 5.0708
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 3.388 seconds
+Result matrix: 
+2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 2.09818e+06 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:40:13 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+        3420469968      task-clock                       #    1.000 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+       68976254988      cpu_core/instructions/           #    3.91  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+       17629884708      cpu_core/cycles/                 #    5.154 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+         531027744      cpu_core/L1-dcache-load-misses/  #    3.08% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+       17230525845      cpu_core/L1-dcache-loads/        #    5.037 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+          72469262      cpu_core/LLC-load-misses/        #   95.12% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+          76186467      cpu_core/LLC-loads/              #   22.274 M/sec                     
+
+       3.421920093 seconds time elapsed
+
+       3.394797000 seconds user
+       0.025998000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:40:16 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+         602078584      cpu_core/mem_load_retired.l1_miss/                                        (99.98%)
+          88710658      cpu_core/mem_load_retired.l2_miss/                                        (99.98%)
+
+       3.544364442 seconds time elapsed
+
+       3.519306000 seconds user
+       0.023988000 seconds sys
+
+
+
+----- C++ | OnMultLine | 2560x2560 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 7.490s | GFlop/s: 4.4799
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 7.490 seconds
+Result matrix: 
+3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 3.27808e+06 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:40:20 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+        7538035889      task-clock                       #    1.000 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+      134646797763      cpu_core/instructions/           #    3.50  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+       38426482828      cpu_core/cycles/                 #    5.098 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+        1133101277      cpu_core/L1-dcache-load-misses/  #    3.37% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+       33640059396      cpu_core/L1-dcache-loads/        #    4.463 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+         364753388      cpu_core/LLC-load-misses/        #   88.80% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+         410763550      cpu_core/LLC-loads/              #   54.492 M/sec                     
+
+       7.540378265 seconds time elapsed
+
+       7.499220000 seconds user
+       0.038990000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:40:28 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+        1598109606      cpu_core/mem_load_retired.l1_miss/                                        (99.96%)
+         485480241      cpu_core/mem_load_retired.l2_miss/                                        (99.96%)
+
+       7.660931314 seconds time elapsed
+
+       7.623593000 seconds user
+       0.034988000 seconds sys
+
+
+
+----- C++ | OnMultLine | 3072x3072 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 13.093s | GFlop/s: 4.4285
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 13.093 seconds
+Result matrix: 
+4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 4.72013e+06 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:40:35 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+       13155968921      task-clock                       #    1.000 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+      232578206119      cpu_core/instructions/           #    3.50  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+       66539814979      cpu_core/cycles/                 #    5.058 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+        2221654752      cpu_core/L1-dcache-load-misses/  #    3.82% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+       58112819827      cpu_core/L1-dcache-loads/        #    4.417 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+         499859377      cpu_core/LLC-load-misses/        #   92.41% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+         540925567      cpu_core/LLC-loads/              #   41.116 M/sec                     
+
+      13.160594961 seconds time elapsed
+
+      13.100082000 seconds user
+       0.055987000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:40:48 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+        2592674464      cpu_core/mem_load_retired.l1_miss/                                        (99.87%)
+         574846155      cpu_core/mem_load_retired.l2_miss/                                        (99.87%)
+
+      13.146715744 seconds time elapsed
+
+      13.089348000 seconds user
+       0.053984000 seconds sys
+
+
+
+===== C++ OnMultLine (4096..10240) =====
+
+----- C++ | OnMultLine | 4096x4096 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 32.641s | GFlop/s: 4.2106
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 32.641 seconds
+Result matrix: 
+8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:41:02 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+       32747449817      task-clock                       #    1.000 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+      551031969593      cpu_core/instructions/           #    3.34  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+      165080337929      cpu_core/cycles/                 #    5.041 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+        9383025251      cpu_core/L1-dcache-load-misses/  #    6.81% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+      137699785813      cpu_core/L1-dcache-loads/        #    4.205 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+         970563851      cpu_core/LLC-load-misses/        #   98.65% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+         983829843      cpu_core/LLC-loads/              #   30.043 M/sec                     
+
+      32.756258128 seconds time elapsed
+
+      32.652182000 seconds user
+       0.094974000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:41:34 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+       10214607492      cpu_core/mem_load_retired.l1_miss/                                        (99.95%)
+        1026982122      cpu_core/mem_load_retired.l2_miss/                                        (99.95%)
+
+      32.718786352 seconds time elapsed
+
+      32.615619000 seconds user
+       0.094975000 seconds sys
+
+
+
+----- C++ | OnMultLine | 6144x6144 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 112.871s | GFlop/s: 4.1096
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 112.871 seconds
+Result matrix: 
+1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:42:07 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+      113093245677      task-clock                       #    1.000 CPUs utilized             
+      441256190699      cpu_atom/instructions/           #    1.11  insn per cycle              (0.01%)
+     1858909965702      cpu_core/instructions/           #    3.26  insn per cycle              (99.99%)
+      395951947159      cpu_atom/cycles/                 #    3.501 GHz                         (0.01%)
+      570468674399      cpu_core/cycles/                 #    5.044 GHz                         (99.99%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+       35681934547      cpu_core/L1-dcache-load-misses/  #    7.68% of all L1-dcache accesses   (99.99%)
+       92831549887      cpu_atom/L1-dcache-loads/        #  820.841 M/sec                       (0.01%)
+      464590937545      cpu_core/L1-dcache-loads/        #    4.108 G/sec                       (99.99%)
+         142617203      cpu_atom/LLC-load-misses/        #   21.99% of all LL-cache accesses    (0.01%)
+        3450231948      cpu_core/LLC-load-misses/        #   99.05% of all LL-cache accesses    (99.99%)
+         648561421      cpu_atom/LLC-loads/              #    5.735 M/sec                       (0.01%)
+        3483156902      cpu_core/LLC-loads/              #   30.799 M/sec                       (99.99%)
+
+     113.119770252 seconds time elapsed
+
+     112.900664000 seconds user
+       0.191955000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:44:00 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+       38938642383      cpu_core/mem_load_retired.l1_miss/                                        (100.00%)
+        3651460048      cpu_core/mem_load_retired.l2_miss/                                        (100.00%)
+
+     113.384642604 seconds time elapsed
+
+     113.172257000 seconds user
+       0.185957000 seconds sys
+
+
+
+----- C++ | OnMultLine | 8192x8192 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 269.289s | GFlop/s: 4.0830
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 269.289 seconds
+Result matrix: 
+3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:45:54 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+      269670296084      task-clock                       #    1.000 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+     4404940196956      cpu_core/instructions/           #    3.24  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+     1358758940548      cpu_core/cycles/                 #    5.039 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+       87547705287      cpu_core/L1-dcache-load-misses/  #    7.95% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+     1100976972852      cpu_core/L1-dcache-loads/        #    4.083 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+        8408645560      cpu_core/LLC-load-misses/        #   99.16% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+        8480196642      cpu_core/LLC-loads/              #   31.447 M/sec                     
+
+     269.729373757 seconds time elapsed
+
+     269.330154000 seconds user
+       0.337923000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 11:50:24 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+       95637231617      cpu_core/mem_load_retired.l1_miss/                                        (100.00%)
+        8902638311      cpu_core/mem_load_retired.l2_miss/                                        (100.00%)
+
+     270.183497961 seconds time elapsed
+
+     269.788527000 seconds user
+       0.335927000 seconds sys
+
+
+
+----- C++ | OnMultLine | 10240x10240 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 527.344s | GFlop/s: 4.0723
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 527.344 seconds
+Result matrix: 
+5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 
+
+1. Multiplication
+2. Line Multiplication
+3. Block Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 11:54:54 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+      527931653463      task-clock                       #    1.000 CPUs utilized             
+     5219809723046      cpu_atom/instructions/           #    2.68  insn per cycle              (0.01%)
+     8602296648448      cpu_core/instructions/           #    3.24  insn per cycle              (99.99%)
+     1948277383875      cpu_atom/cycles/                 #    3.690 GHz                         (0.01%)
+     2658951435502      cpu_core/cycles/                 #    5.037 GHz                         (99.99%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+      166491580183      cpu_core/L1-dcache-load-misses/  #    7.74% of all L1-dcache accesses   (99.99%)
+     1304864560027      cpu_atom/L1-dcache-loads/        #    2.472 G/sec                       (0.01%)
+     2150150944586      cpu_core/L1-dcache-loads/        #    4.073 G/sec                       (99.99%)
+        7353455849      cpu_atom/LLC-load-misses/        #   25.19% of all LL-cache accesses    (0.01%)
+       16156652692      cpu_core/LLC-load-misses/        #   99.12% of all LL-cache accesses    (99.99%)
+       29190214457      cpu_atom/LLC-loads/              #   55.292 M/sec                       (0.01%)
+       16300437398      cpu_core/LLC-loads/              #   30.876 M/sec                       (99.99%)
+
+     528.046083222 seconds time elapsed
+
+     527.404528000 seconds user
+       0.522882000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 12:03:42 2026
+
+
+ Performance counter stats for './matrix_cpp':
+
+      180288528331      cpu_core/mem_load_retired.l1_miss/                                        (100.00%)
+       17063017605      cpu_core/mem_load_retired.l2_miss/                                        (100.00%)
+
+     527.712542560 seconds time elapsed
+
+     527.080710000 seconds user
+       0.517887000 seconds sys
+
+
+
+===== Java onMultLine (1024..3072) =====
+
+----- Java | OnMultLine | 1024x1024 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 0.356s | GFlop/s: 6.0323
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 0.356 seconds
+Result matrix: 
+524800.0 524800.0 524800.0 524800.0 524800.0 524800.0 524800.0 524800.0 524800.0 524800.0 
+
+1. Multiplication
+2. Line Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 12:12:30 2026
+
+
+ Performance counter stats for 'java -Xmx4g -cp . MatrixProduct':
+
+         459851517      task-clock                       #    1.110 CPUs utilized             
+        1418217104      cpu_atom/instructions/           #    0.92  insn per cycle              (7.55%)
+        8718054880      cpu_core/instructions/           #    3.86  insn per cycle              (92.45%)
+        1533905087      cpu_atom/cycles/                 #    3.336 GHz                         (7.55%)
+        2260322594      cpu_core/cycles/                 #    4.915 GHz                         (92.45%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+           9415795      cpu_core/L1-dcache-load-misses/  #    0.25% of all L1-dcache accesses   (92.45%)
+         396348694      cpu_atom/L1-dcache-loads/        #  861.906 M/sec                       (7.55%)
+        3733483124      cpu_core/L1-dcache-loads/        #    8.119 G/sec                       (92.45%)
+            272984      cpu_atom/LLC-load-misses/        #   12.46% of all LL-cache accesses    (7.55%)
+             94106      cpu_core/LLC-load-misses/        #   20.61% of all LL-cache accesses    (92.45%)
+           2191692      cpu_atom/LLC-loads/              #    4.766 M/sec                       (7.55%)
+            456695      cpu_core/LLC-loads/              #  993.136 K/sec                       (92.45%)
+
+       0.414334902 seconds time elapsed
+
+       0.433991000 seconds user
+       0.030716000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 12:12:30 2026
+
+
+ Performance counter stats for 'java -Xmx4g -cp . MatrixProduct':
+
+           8870144      cpu_core/mem_load_retired.l1_miss/                                        (94.76%)
+            300802      cpu_core/mem_load_retired.l2_miss/                                        (94.76%)
+
+       0.426412970 seconds time elapsed
+
+       0.456921000 seconds user
+       0.026109000 seconds sys
+
+
+
+----- Java | OnMultLine | 1536x1536 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 1.244s | GFlop/s: 5.8262
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 1.244 seconds
+Result matrix: 
+1180416.0 1180416.0 1180416.0 1180416.0 1180416.0 1180416.0 1180416.0 1180416.0 1180416.0 1180416.0 
+
+1. Multiplication
+2. Line Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 12:12:31 2026
+
+
+ Performance counter stats for 'java -Xmx4g -cp . MatrixProduct':
+
+        1370984570      task-clock                       #    1.042 CPUs utilized             
+        4566860920      cpu_atom/instructions/           #    1.01  insn per cycle              (3.49%)
+       26438792571      cpu_core/instructions/           #    3.86  insn per cycle              (96.51%)
+        4521191390      cpu_atom/cycles/                 #    3.298 GHz                         (3.49%)
+        6852268844      cpu_core/cycles/                 #    4.998 GHz                         (96.51%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+          24766602      cpu_core/L1-dcache-load-misses/  #    0.21% of all L1-dcache accesses   (96.51%)
+        1368212767      cpu_atom/L1-dcache-loads/        #  997.978 M/sec                       (3.49%)
+       11570619948      cpu_core/L1-dcache-loads/        #    8.440 G/sec                       (96.51%)
+            371246      cpu_atom/LLC-load-misses/        #    8.72% of all LL-cache accesses    (3.49%)
+            251787      cpu_core/LLC-load-misses/        #   29.15% of all LL-cache accesses    (96.51%)
+           4256273      cpu_atom/LLC-loads/              #    3.105 M/sec                       (3.49%)
+            863716      cpu_core/LLC-loads/              #  629.997 K/sec                       (96.51%)
+
+       1.315939052 seconds time elapsed
+
+       1.332845000 seconds user
+       0.045062000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 12:12:32 2026
+
+
+ Performance counter stats for 'java -Xmx4g -cp . MatrixProduct':
+
+          29952771      cpu_core/mem_load_retired.l1_miss/                                        (98.27%)
+            644890      cpu_core/mem_load_retired.l2_miss/                                        (98.27%)
+
+       1.332379262 seconds time elapsed
+
+       1.353062000 seconds user
+       0.028084000 seconds sys
+
+
+
+----- Java | OnMultLine | 2048x2048 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 3.551s | GFlop/s: 4.8380
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 3.551 seconds
+Result matrix: 
+2098176.0 2098176.0 2098176.0 2098176.0 2098176.0 2098176.0 2098176.0 2098176.0 2098176.0 2098176.0 
+
+1. Multiplication
+2. Line Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 12:12:33 2026
+
+
+ Performance counter stats for 'java -Xmx4g -cp . MatrixProduct':
+
+        3705179921      task-clock                       #    1.017 CPUs utilized             
+       10123080861      cpu_atom/instructions/           #    0.90  insn per cycle              (0.88%)
+       60212007112      cpu_core/instructions/           #    3.23  insn per cycle              (99.12%)
+       11229248899      cpu_atom/cycles/                 #    3.031 GHz                         (0.88%)
+       18631648827      cpu_core/cycles/                 #    5.029 GHz                         (99.12%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+          45082529      cpu_core/L1-dcache-load-misses/  #    0.17% of all L1-dcache accesses   (99.12%)
+        2942309393      cpu_atom/L1-dcache-loads/        #  794.107 M/sec                       (0.88%)
+       26495751761      cpu_core/L1-dcache-loads/        #    7.151 G/sec                       (99.12%)
+            747790      cpu_atom/LLC-load-misses/        #    5.97% of all LL-cache accesses    (0.88%)
+           1224148      cpu_core/LLC-load-misses/        #   47.27% of all LL-cache accesses    (99.12%)
+          12517347      cpu_atom/LLC-loads/              #    3.378 M/sec                       (0.88%)
+           2589673      cpu_core/LLC-loads/              #  698.933 K/sec                       (99.12%)
+
+       3.643609188 seconds time elapsed
+
+       3.654764000 seconds user
+       0.061062000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 12:12:37 2026
+
+
+ Performance counter stats for 'java -Xmx4g -cp . MatrixProduct':
+
+          41962285      cpu_core/mem_load_retired.l1_miss/                                        (99.31%)
+           2201304      cpu_core/mem_load_retired.l2_miss/                                        (99.31%)
+
+       3.638325554 seconds time elapsed
+
+       3.632493000 seconds user
+       0.055869000 seconds sys
+
+
+
+----- Java | OnMultLine | 2560x2560 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 7.804s | GFlop/s: 4.2996
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 7.804 seconds
+Result matrix: 
+3278080.0 3278080.0 3278080.0 3278080.0 3278080.0 3278080.0 3278080.0 3278080.0 3278080.0 3278080.0 
+
+1. Multiplication
+2. Line Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 12:12:41 2026
+
+
+ Performance counter stats for 'java -Xmx4g -cp . MatrixProduct':
+
+        7955322382      task-clock                       #    1.006 CPUs utilized             
+       21011999816      cpu_atom/instructions/           #    0.86  insn per cycle              (0.41%)
+      115520116304      cpu_core/instructions/           #    2.88  insn per cycle              (99.59%)
+       24340066474      cpu_atom/cycles/                 #    3.060 GHz                         (0.41%)
+       40174825546      cpu_core/cycles/                 #    5.050 GHz                         (99.59%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+         475875922      cpu_core/L1-dcache-load-misses/  #    0.93% of all L1-dcache accesses   (99.59%)
+        5976920707      cpu_atom/L1-dcache-loads/        #  751.311 M/sec                       (0.41%)
+       51033793359      cpu_core/L1-dcache-loads/        #    6.415 G/sec                       (99.59%)
+             17002      cpu_atom/LLC-load-misses/        #    0.08% of all LL-cache accesses    (0.41%)
+          32700861      cpu_core/LLC-load-misses/        #   69.08% of all LL-cache accesses    (99.59%)
+          21682468      cpu_atom/LLC-loads/              #    2.726 M/sec                       (0.41%)
+          47340126      cpu_core/LLC-loads/              #    5.951 M/sec                       (99.59%)
+
+       7.907608436 seconds time elapsed
+
+       7.904036000 seconds user
+       0.065041000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 12:12:49 2026
+
+
+ Performance counter stats for 'java -Xmx4g -cp . MatrixProduct':
+
+         574616148      cpu_core/mem_load_retired.l1_miss/                                        (99.48%)
+          62626799      cpu_core/mem_load_retired.l2_miss/                                        (99.48%)
+
+       7.961126565 seconds time elapsed
+
+       7.952648000 seconds user
+       0.071924000 seconds sys
+
+
+
+----- Java | OnMultLine | 3072x3072 -----
+  perf stat (basic) ...
+  perf stat (extended) ...
+  Time: 13.346s | GFlop/s: 4.3445
+
+  [program output]:
+
+1. Multiplication
+2. Line Multiplication
+0. Exit
+Selection?: Dimensions: lins=cols ? Time: 13.346 seconds
+Result matrix: 
+4720128.0 4720128.0 4720128.0 4720128.0 4720128.0 4720128.0 4720128.0 4720128.0 4720128.0 4720128.0 
+
+1. Multiplication
+2. Line Multiplication
+0. Exit
+Selection?:   [perf basic]:
+# started on Tue Mar 10 12:12:57 2026
+
+
+ Performance counter stats for 'java -Xmx4g -cp . MatrixProduct':
+
+       13518233068      task-clock                       #    1.003 CPUs utilized             
+       37335022694      cpu_atom/instructions/           #    0.90  insn per cycle              (0.18%)
+      205028414406      cpu_core/instructions/           #    3.02  insn per cycle              (99.82%)
+       41708194124      cpu_atom/cycles/                 #    3.085 GHz                         (0.18%)
+       67780465897      cpu_core/cycles/                 #    5.014 GHz                         (99.82%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+         137879071      cpu_core/L1-dcache-load-misses/  #    0.15% of all L1-dcache accesses   (99.82%)
+       10454622649      cpu_atom/L1-dcache-loads/        #  773.372 M/sec                       (0.18%)
+       94927045910      cpu_core/L1-dcache-loads/        #    7.022 G/sec                       (99.82%)
+            384698      cpu_atom/LLC-load-misses/        #    1.00% of all LL-cache accesses    (0.18%)
+           6962261      cpu_core/LLC-load-misses/        #   57.81% of all LL-cache accesses    (99.82%)
+          38382411      cpu_atom/LLC-loads/              #    2.839 M/sec                       (0.18%)
+          12043897      cpu_core/LLC-loads/              #  890.937 K/sec                       (99.82%)
+
+      13.474947412 seconds time elapsed
+
+      13.445391000 seconds user
+       0.093967000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 12:13:10 2026
+
+
+ Performance counter stats for 'java -Xmx4g -cp . MatrixProduct':
+
+         217247654      cpu_core/mem_load_retired.l1_miss/                                        (99.79%)
+          18611138      cpu_core/mem_load_retired.l2_miss/                                        (99.79%)
+
+      13.337724879 seconds time elapsed
+
+      13.323744000 seconds user
+       0.077027000 seconds sys
+
+
+
+=================================================================
+                 SUMMARY — OnMultLine (Part 1.2)
+=================================================================
+Size   | C++ Time     | C++ GF/s     | Java Time    | Java GF/s   
+-------|--------------|--------------|--------------|-------------
+1024   | 0.283        | 7.5883       | 0.356        | 6.0323      
+1536   | 1.039        | 6.9757       | 1.244        | 5.8262      
+2048   | 3.388        | 5.0708       | 3.551        | 4.8380      
+2560   | 7.490        | 4.4799       | 7.804        | 4.2996      
+3072   | 13.093       | 4.4285       | 13.346       | 4.3445      
+4096   | 32.641       | 4.2106       | N/A          | N/A         
+6144   | 112.871      | 4.1096       | N/A          | N/A         
+8192   | 269.289      | 4.0830       | N/A          | N/A         
+10240  | 527.344      | 4.0723       | N/A          | N/A         
+
+CSV: ../doc/results/benchmark_onmultline_20260228_161857.csv
+Done!
