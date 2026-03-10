@@ -775,8 +775,13 @@ CSV: ../doc/results/benchmark_onmultblock_20260228_165241.csv
 Done!
 
 =================================================================
+<<<<<<< HEAD
  Benchmark: OnMultBlock (Part 1.3)  —  RUN 20260310_114422
  Date: Tue Mar 10 11:44:22 AM WET 2026
+=======
+ Benchmark: OnMultBlock (Part 1.3)  —  RUN 20260310_121323
+ Date: Tue Mar 10 12:13:23 PM WET 2026
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
  Sizes:       4096 6144 8192 10240
  Block sizes: 128 256 512
 =================================================================
@@ -791,7 +796,11 @@ Done.
 ----- C++ | OnMultBlock | 4096x4096 | block=128 -----
   perf stat (basic) ...
   perf stat (extended) ...
+<<<<<<< HEAD
   Time: 22.869s | GFlop/s: 6.0098
+=======
+  Time: N/As | GFlop/s: N/A
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
   [program output]:
 
@@ -799,6 +808,7 @@ Done.
 2. Line Multiplication
 3. Block Multiplication
 0. Exit
+<<<<<<< HEAD
 Selection?: Dimensions: lins=cols ? Block Size? Time: 22.869 seconds
 Result matrix: 
 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 8.39066e+06 
@@ -809,10 +819,16 @@ Result matrix:
 0. Exit
 Selection?:   [perf basic]:
 # started on Tue Mar 10 11:44:23 2026
+=======
+Selection?: Dimensions: lins=cols ? Block Size? ./matrix_cpp: Interrupt
+  [perf basic]:
+# started on Tue Mar 10 12:13:24 2026
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
  Performance counter stats for './matrix_cpp':
 
+<<<<<<< HEAD
        22984807539      task-clock                       #    1.000 CPUs utilized             
        88043143747      cpu_atom/instructions/           #    1.07  insn per cycle              (0.01%)
       488581234442      cpu_core/instructions/           #    4.34  insn per cycle              (99.99%)
@@ -835,10 +851,35 @@ Selection?:   [perf basic]:
 
   [perf extended]:
 # started on Tue Mar 10 11:44:46 2026
+=======
+       16613191997      task-clock                       #    0.999 CPUs utilized             
+       69796668441      cpu_atom/instructions/           #    1.14  insn per cycle              (0.01%)
+      318415741855      cpu_core/instructions/           #    3.82  insn per cycle              (99.99%)
+       61061518085      cpu_atom/cycles/                 #    3.675 GHz                         (0.01%)
+       83402613608      cpu_core/cycles/                 #    5.020 GHz                         (99.99%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+        3006862673      cpu_core/L1-dcache-load-misses/  #    3.34% of all L1-dcache accesses   (99.99%)
+       15860935711      cpu_atom/L1-dcache-loads/        #  954.719 M/sec                       (0.01%)
+       90074040234      cpu_core/L1-dcache-loads/        #    5.422 G/sec                       (99.99%)
+                 0      cpu_atom/LLC-load-misses/                                               (0.01%)
+           2114132      cpu_core/LLC-load-misses/        #    0.12% of all LL-cache accesses    (99.99%)
+          44836264      cpu_atom/LLC-loads/              #    2.699 M/sec                       (0.01%)
+        1730424169      cpu_core/LLC-loads/              #  104.160 M/sec                       (99.99%)
+
+      16.627852614 seconds time elapsed
+
+      16.531287000 seconds user
+       0.092979000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 12:13:40 2026
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
  Performance counter stats for './matrix_cpp':
 
+<<<<<<< HEAD
         4967843941      cpu_core/mem_load_retired.l1_miss/                                      
           42308921      cpu_core/mem_load_retired.l2_miss/                                      
 
@@ -846,13 +887,26 @@ Selection?:   [perf basic]:
 
       22.812420000 seconds user
        0.096976000 seconds sys
+=======
+         378480962      cpu_core/mem_load_retired.l1_miss/                                        (99.88%)
+         174922538      cpu_core/mem_load_retired.l2_miss/                                        (99.88%)
+
+       1.753406382 seconds time elapsed
+
+       1.671079000 seconds user
+       0.082003000 seconds sys
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
 
 ----- C++ | OnMultBlock | 6144x6144 | block=128 -----
   perf stat (basic) ...
   perf stat (extended) ...
+<<<<<<< HEAD
   Time: 79.204s | GFlop/s: 5.8565
+=======
+  Time: N/As | GFlop/s: N/A
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
   [program output]:
 
@@ -860,6 +914,7 @@ Selection?:   [perf basic]:
 2. Line Multiplication
 3. Block Multiplication
 0. Exit
+<<<<<<< HEAD
 Selection?: Dimensions: lins=cols ? Block Size? Time: 79.204 seconds
 Result matrix: 
 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 1.88774e+07 
@@ -870,10 +925,16 @@ Result matrix:
 0. Exit
 Selection?:   [perf basic]:
 # started on Tue Mar 10 11:45:09 2026
+=======
+Selection?: Dimensions: lins=cols ? Block Size? ./matrix_cpp: Interrupt
+  [perf basic]:
+# started on Tue Mar 10 12:13:42 2026
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
  Performance counter stats for './matrix_cpp':
 
+<<<<<<< HEAD
        79435245986      task-clock                       #    1.000 CPUs utilized             
       663804028863      cpu_atom/instructions/           #    2.44  insn per cycle              (0.00%)
      1648061237824      cpu_core/instructions/           #    4.24  insn per cycle              (100.00%)
@@ -896,10 +957,35 @@ Selection?:   [perf basic]:
 
   [perf extended]:
 # started on Tue Mar 10 11:46:28 2026
+=======
+         265408374      task-clock                       #    0.927 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+        2458669231      cpu_core/instructions/           #    1.89  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+        1303997260      cpu_core/cycles/                 #    4.913 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+          22226900      cpu_core/L1-dcache-load-misses/  #    3.70% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+         601079100      cpu_core/L1-dcache-loads/        #    2.265 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+             87112      cpu_core/LLC-load-misses/        #    2.16% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+           4039702      cpu_core/LLC-loads/              #   15.221 M/sec                     
+
+       0.286192392 seconds time elapsed
+
+       0.094691000 seconds user
+       0.191376000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 12:13:43 2026
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
  Performance counter stats for './matrix_cpp':
 
+<<<<<<< HEAD
        15430242455      cpu_core/mem_load_retired.l1_miss/                                        (99.98%)
         2093424981      cpu_core/mem_load_retired.l2_miss/                                        (99.98%)
 
@@ -907,13 +993,26 @@ Selection?:   [perf basic]:
 
       79.687410000 seconds user
        0.211950000 seconds sys
+=======
+         409155865      cpu_core/mem_load_retired.l1_miss/                                        (99.83%)
+          11967464      cpu_core/mem_load_retired.l2_miss/                                        (99.83%)
+
+       2.170023042 seconds time elapsed
+
+       1.976237000 seconds user
+       0.192925000 seconds sys
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
 
 ----- C++ | OnMultBlock | 8192x8192 | block=128 -----
   perf stat (basic) ...
   perf stat (extended) ...
+<<<<<<< HEAD
   Time: 211.739s | GFlop/s: 5.1928
+=======
+  Time: N/As | GFlop/s: N/A
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
   [program output]:
 
@@ -921,6 +1020,7 @@ Selection?:   [perf basic]:
 2. Line Multiplication
 3. Block Multiplication
 0. Exit
+<<<<<<< HEAD
 Selection?: Dimensions: lins=cols ? Block Size? Time: 211.739 seconds
 Result matrix: 
 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 3.35585e+07 
@@ -931,10 +1031,16 @@ Result matrix:
 0. Exit
 Selection?:   [perf basic]:
 # started on Tue Mar 10 11:47:48 2026
+=======
+Selection?: Dimensions: lins=cols ? Block Size? ./matrix_cpp: Interrupt
+  [perf basic]:
+# started on Tue Mar 10 12:13:45 2026
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
  Performance counter stats for './matrix_cpp':
 
+<<<<<<< HEAD
       212158325893      task-clock                       #    1.000 CPUs utilized             
       731275659413      cpu_atom/instructions/           #    1.06  insn per cycle              (0.00%)
      3905895213111      cpu_core/instructions/           #    3.82  insn per cycle              (100.00%)
@@ -957,10 +1063,35 @@ Selection?:   [perf basic]:
 
   [perf extended]:
 # started on Tue Mar 10 11:51:20 2026
+=======
+         135675819      task-clock                       #    0.905 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+         852505865      cpu_core/instructions/           #    1.31  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+         653088667      cpu_core/cycles/                 #    4.814 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+            344561      cpu_core/L1-dcache-load-misses/  #    0.22% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+         158255512      cpu_core/L1-dcache-loads/        #    1.166 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+             36624      cpu_core/LLC-load-misses/        #   47.95% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+             76372      cpu_core/LLC-loads/              #  562.901 K/sec                     
+
+       0.149922878 seconds time elapsed
+
+       0.009989000 seconds user
+       0.139859000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 12:13:45 2026
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
  Performance counter stats for './matrix_cpp':
 
+<<<<<<< HEAD
        43827024957      cpu_core/mem_load_retired.l1_miss/                                        (100.00%)
        23637182108      cpu_core/mem_load_retired.l2_miss/                                        (100.00%)
 
@@ -968,13 +1099,26 @@ Selection?:   [perf basic]:
 
      211.618481000 seconds user
        0.348916000 seconds sys
+=======
+            319399      cpu_core/mem_load_retired.l1_miss/                                        (75.01%)
+             57804      cpu_core/mem_load_retired.l2_miss/                                        (75.01%)
+
+       0.140159598 seconds time elapsed
+
+       0.023013000 seconds user
+       0.117070000 seconds sys
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
 
 ----- C++ | OnMultBlock | 10240x10240 | block=128 -----
   perf stat (basic) ...
   perf stat (extended) ...
+<<<<<<< HEAD
   Time: 358.636s | GFlop/s: 5.9879
+=======
+  Time: N/As | GFlop/s: N/A
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
   [program output]:
 
@@ -982,6 +1126,7 @@ Selection?:   [perf basic]:
 2. Line Multiplication
 3. Block Multiplication
 0. Exit
+<<<<<<< HEAD
 Selection?: Dimensions: lins=cols ? Block Size? Time: 358.636 seconds
 Result matrix: 
 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 5.24339e+07 
@@ -992,10 +1137,16 @@ Result matrix:
 0. Exit
 Selection?:   [perf basic]:
 # started on Tue Mar 10 11:54:52 2026
+=======
+Selection?: Dimensions: lins=cols ? Block Size? ./matrix_cpp: Interrupt
+  [perf basic]:
+# started on Tue Mar 10 12:13:45 2026
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
  Performance counter stats for './matrix_cpp':
 
+<<<<<<< HEAD
       359260846892      task-clock                       #    1.000 CPUs utilized             
      3692261777484      cpu_atom/instructions/           #    2.96  insn per cycle              (0.00%)
      7626916929462      cpu_core/instructions/           #    4.32  insn per cycle              (100.00%)
@@ -1018,10 +1169,35 @@ Selection?:   [perf basic]:
 
   [perf extended]:
 # started on Tue Mar 10 12:00:52 2026
+=======
+         242909612      task-clock                       #    0.910 CPUs utilized             
+     <not counted>      cpu_atom/instructions/                                                  (0.00%)
+        1617273901      cpu_core/instructions/           #    1.31  insn per cycle            
+     <not counted>      cpu_atom/cycles/                                                        (0.00%)
+        1234564945      cpu_core/cycles/                 #    5.082 GHz                       
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+            685968      cpu_core/L1-dcache-load-misses/  #    0.23% of all L1-dcache accesses 
+     <not counted>      cpu_atom/L1-dcache-loads/                                               (0.00%)
+         300077172      cpu_core/L1-dcache-loads/        #    1.235 G/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/                                               (0.00%)
+             49934      cpu_core/LLC-load-misses/        #   42.34% of all LL-cache accesses  
+     <not counted>      cpu_atom/LLC-loads/                                                     (0.00%)
+            117926      cpu_core/LLC-loads/              #  485.473 K/sec                     
+
+       0.267031082 seconds time elapsed
+
+       0.037949000 seconds user
+       0.228694000 seconds sys
+
+
+  [perf extended]:
+# started on Tue Mar 10 12:13:45 2026
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
  Performance counter stats for './matrix_cpp':
 
+<<<<<<< HEAD
        73017371439      cpu_core/mem_load_retired.l1_miss/                                        (100.00%)
         2111278341      cpu_core/mem_load_retired.l2_miss/                                        (100.00%)
 
@@ -1029,6 +1205,15 @@ Selection?:   [perf basic]:
 
      358.096770000 seconds user
        0.510881000 seconds sys
+=======
+            655373      cpu_core/mem_load_retired.l1_miss/                                        (99.96%)
+            107073      cpu_core/mem_load_retired.l2_miss/                                        (99.96%)
+
+       0.283307271 seconds time elapsed
+
+       0.042020000 seconds user
+       0.241116000 seconds sys
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
 
 
 
@@ -1038,6 +1223,7 @@ Selection?:   [perf basic]:
 
 ----- C++ | OnMultBlock | 4096x4096 | block=256 -----
   perf stat (basic) ...
+<<<<<<< HEAD
   perf stat (extended) ...
   Time: 21.735s | GFlop/s: 6.3234
 
@@ -1222,3 +1408,5 @@ Selection?:   [perf basic]:
 ----- C++ | OnMultBlock | 10240x10240 | block=256 -----
   perf stat (basic) ...
   perf stat (extended) ...
+=======
+>>>>>>> 0c672eb8de39ccb78cf85c8b42c7b75b949505f1
