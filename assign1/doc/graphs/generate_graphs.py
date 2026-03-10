@@ -13,8 +13,9 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
-RESULTS_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = RESULTS_DIR
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.join(SCRIPT_DIR, "../results")
+OUTPUT_DIR = SCRIPT_DIR
 
 # Columns relevant to memory-hierarchy analysis (drop page-faults, cache-misses,
 # cache-references — they are OS-level or generic duplicates of LLC counters).
