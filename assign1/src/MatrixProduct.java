@@ -32,12 +32,14 @@ public class MatrixProduct {
                 for (int k = 0; k < m_ar; k++) {
                     temp += pha[i * m_ar + k] * phb[k * m_br + j];
                 }
-                phc[i * m_ar + j] = temp;
+                phc[i * m_br + j] = temp;
             }
         }
 
         endTime = System.currentTimeMillis();
-        System.out.printf("Time: %3.3f seconds\n", (endTime - startTime) / 1000.0);
+        double elapsed = (endTime - startTime) / 1000.0;
+        System.out.printf("Time: %3.3f seconds\n", elapsed);
+        System.out.printf("TIME_SECONDS=%.6f\n", elapsed);
 
         System.out.println("Result matrix: ");
         for (int j = 0; j < Math.min(10, m_br); j++) {
@@ -76,13 +78,15 @@ public class MatrixProduct {
         for (int i = 0; i < m_ar; i++) {
             for (int k = 0; k < m_ar; k++) {
                 for (int j = 0; j < m_br; j++) {
-                    phc[i * m_ar + j] += pha[i * m_ar + k] * phb[k * m_br + j];
+                    phc[i * m_br + j] += pha[i * m_ar + k] * phb[k * m_br + j];
                 }
             }
         }
 
         endTime = System.currentTimeMillis();
-        System.out.printf("Time: %3.3f seconds\n", (endTime - startTime) / 1000.0);
+        double elapsed = (endTime - startTime) / 1000.0;
+        System.out.printf("Time: %3.3f seconds\n", elapsed);
+        System.out.printf("TIME_SECONDS=%.6f\n", elapsed);
 
         System.out.println("Result matrix: ");
         for (int j = 0; j < Math.min(10, m_br); j++) {
@@ -92,6 +96,24 @@ public class MatrixProduct {
     }
 
     public static void main(String[] args) {
+        if (args.length >= 2) {
+            int op = Integer.parseInt(args[0]);
+            int lin = Integer.parseInt(args[1]);
+            int col = lin;
+
+            switch (op) {
+                case 1:
+                    onMult(lin, col);
+                    return;
+                case 2:
+                    onMultLine(lin, col);
+                    return;
+                default:
+                    System.err.println("Usage: java MatrixProduct <op> <size>");
+                    return;
+            }
+        }
+
         Scanner scanner = new Scanner(System.in);
         int op, lin, col;
 
@@ -115,10 +137,12 @@ public class MatrixProduct {
                 case 2:
                     onMultLine(lin, col);
                     break;
+                default:
+                    System.out.println("Invalid option.");
             }
 
         } while (op != 0);
-        
+
         scanner.close();
     }
 }
