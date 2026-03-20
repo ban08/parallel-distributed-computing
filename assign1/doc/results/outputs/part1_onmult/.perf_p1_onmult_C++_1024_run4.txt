@@ -1,0 +1,21 @@
+# started on Thu Mar 19 18:19:06 2026
+
+10067500464;;cpu_atom/instructions/;405550;0.00;1.13;insn per cycle
+7590180638;;cpu_core/instructions/;1378250081;49.00;0.56;insn per cycle
+8881648380;;cpu_atom/cycles/;405550;0.00;3.220;GHz
+13517183978;;cpu_core/cycles/;1654037562;59.00;4.901;GHz
+2758246324;;task-clock;2758246324;100.00;1.000;CPUs utilized
+49662716;;cpu_atom/cache-references/;405550;0.00;18.005;M/sec
+1775185290;;cpu_core/cache-references/;1930066919;69.00;643.592;M/sec
+18132128;;cpu_atom/cache-misses/;405550;0.00;36.51;of all cache refs
+2774364;;cpu_core/cache-misses/;2205911679;79.00;0.16;of all cache refs
+2494024621;;cpu_atom/L1-dcache-loads/;405550;0.00;904.207;M/sec
+2169587163;;cpu_core/L1-dcache-loads/;2205964162;79.00;786.582;M/sec
+<not supported>;;cpu_atom/L1-dcache-load-misses/;0;100.00;;
+1056664864;;cpu_core/L1-dcache-load-misses/;2205912362;79.00;48.70;of all L1-dcache accesses
+6059912;;cpu_atom/LLC-loads/;405550;0.00;2.197;M/sec
+1041348179;;cpu_core/LLC-loads/;2205884143;79.00;377.540;M/sec
+0;;cpu_atom/LLC-load-misses/;405550;0.00;;
+1136564;;cpu_core/LLC-load-misses/;2206735841;80.00;0.11;of all LL-cache accesses
+979867474;;cpu_core/mem_load_retired.l1_miss/;1103833243;40.00;355.250;M/sec
+969050734;;cpu_core/mem_load_retired.l2_miss/;1103033345;39.00;351.329;M/sec
