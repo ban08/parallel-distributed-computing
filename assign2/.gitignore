@@ -1,0 +1,6 @@
+out/
+*.class
+*.jks
+*.p12
+*.properties
+!*.example.properties
