@@ -75,7 +75,7 @@ public final class ConnectionHandlerManualTest {
                 alice.setSoTimeout(3000);
                 bob.setSoTimeout(3000);
 
-                login(aliceFrame, "miguel", "password123");
+                String aliceToken = login(aliceFrame, "miguel", "password123");
                 login(bobFrame, "bob", "bob123");
 
                 aliceFrame.writeLine("LIST");
@@ -103,23 +103,43 @@ public final class ConnectionHandlerManualTest {
                 expectRoomMessage(aliceFrame.readLine(), "miguel", "hello bob");
                 expectRoomMessage(bobFrame.readLine(), "miguel", "hello bob");
 
-                bobFrame.writeLine("LEAVE");
-                expect(bobFrame.readLine(), "LEFT Library");
-                expect(aliceFrame.readLine(), "SYS bob left the room");
+                closeSocket(alice);
+                acceptAlice.join();
 
-                bobFrame.writeLine("MSG after leave");
-                expect(bobFrame.readLine(), "ERR not in room");
+                bobFrame.writeLine("MSG missed one");
+                expectRoomMessage(bobFrame.readLine(), "bob", "missed one");
+                bobFrame.writeLine("MSG missed two");
+                expectRoomMessage(bobFrame.readLine(), "bob", "missed two");
 
-                bobFrame.writeLine("JOIN AutoRoom");
-                expect(bobFrame.readLine(), "JOINED AutoRoom");
-                expect(bobFrame.readLine(), "SYS bob entered the room");
+                Thread acceptAliceResume = Thread.ofVirtual().start(() -> acceptAndHandle(server, state));
+                try (Socket aliceResume = new Socket("localhost", port);
+                     Frame aliceResumeFrame = new Frame(aliceResume)) {
+                    aliceResume.setSoTimeout(3000);
+                    aliceResumeFrame.writeLine("TOKEN " + aliceToken);
+                    expect(aliceResumeFrame.readLine(), "OK RESUMED miguel");
+                    expect(aliceResumeFrame.readLine(), "JOINED Library");
+                    expect(aliceResumeFrame.readLine(), "HIST 2");
+                    expectRoomMessage(aliceResumeFrame.readLine(), "bob", "missed one");
+                    expectRoomMessage(aliceResumeFrame.readLine(), "bob", "missed two");
 
-                bobFrame.writeLine("QUIT");
-                expect(bobFrame.readLine(), "BYE");
-                aliceFrame.writeLine("QUIT");
-                expect(aliceFrame.readLine(), "BYE");
+                    bobFrame.writeLine("LEAVE");
+                    expect(bobFrame.readLine(), "LEFT Library");
+                    expect(aliceResumeFrame.readLine(), "SYS bob left the room");
+
+                    bobFrame.writeLine("MSG after leave");
+                    expect(bobFrame.readLine(), "ERR not in room");
+
+                    bobFrame.writeLine("JOIN AutoRoom");
+                    expect(bobFrame.readLine(), "JOINED AutoRoom");
+                    expect(bobFrame.readLine(), "SYS bob entered the room");
+
+                    bobFrame.writeLine("QUIT");
+                    expect(bobFrame.readLine(), "BYE");
+                    aliceResumeFrame.writeLine("QUIT");
+                    expect(aliceResumeFrame.readLine(), "BYE");
+                }
+                acceptAliceResume.join();
             }
-            acceptAlice.join();
             acceptBob.join();
         }
 
@@ -135,9 +155,15 @@ public final class ConnectionHandlerManualTest {
         }
     }
 
-    private static void login(Frame frame, String username, String password) throws Exception {
+    private static void closeSocket(Socket socket) throws Exception {
+        socket.close();
+    }
+
+    private static String login(Frame frame, String username, String password) throws Exception {
         frame.writeLine("LOGIN " + username + " " + password);
-        expectStartsWith(frame.readLine(), "OK TOKEN ");
+        String response = frame.readLine();
+        expectStartsWith(response, "OK TOKEN ");
+        return response.substring("OK TOKEN ".length());
     }
 
     private static void expect(String actual, String expected) {

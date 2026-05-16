@@ -3,6 +3,7 @@ package chat.server;
 import chat.auth.PasswordHasher;
 import chat.common.Frame;
 import chat.room.Room;
+import chat.room.RoomMessage;
 import chat.session.Session;
 
 import java.io.IOException;
@@ -230,8 +231,12 @@ public final class ConnectionHandler implements Runnable {
             return send(frame, "ERR invalid token");
         }
         session = resumed;
-        startWriter(resumed, frame);
-        return send(frame, "OK RESUMED " + resumed.username());
+        long generation = attachConnection(resumed);
+        resumed.clearOutbound();
+        frame.writeLine("OK RESUMED " + resumed.username());
+        enqueueResumeReplay(resumed);
+        startWriter(resumed, generation, frame);
+        return true;
     }
 
     private void leaveCurrentRoom() {
@@ -257,10 +262,18 @@ public final class ConnectionHandler implements Runnable {
     }
 
     private void startWriter(Session attachedSession, Frame frame) {
+        long generation = attachConnection(attachedSession);
+        startWriter(attachedSession, generation, frame);
+    }
+
+    private long attachConnection(Session attachedSession) {
         long generation = attachedSession.attachConnection();
         writerGeneration = generation;
         writerDrainThenStop = false;
+        return generation;
+    }
 
+    private void startWriter(Session attachedSession, long generation, Frame frame) {
         Thread writer = Thread.ofVirtual()
                 .name("session-writer-" + attachedSession.username())
                 .start(() -> writerLoop(attachedSession, generation, frame));
@@ -271,13 +284,15 @@ public final class ConnectionHandler implements Runnable {
     private void writerLoop(Session attachedSession, long generation, Frame frame) {
         try {
             while (attachedSession.ownsConnection(generation)) {
-                String outbound = attachedSession.takeOutbound();
+                Session.OutboundFrame outbound = attachedSession.takeOutboundFrame();
                 if (!attachedSession.ownsConnection(generation)) {
-                    attachedSession.enqueue(outbound);
                     return;
                 }
 
-                frame.writeLine(outbound);
+                frame.writeLine(outbound.line());
+                if (outbound.hasRoomSequence()) {
+                    attachedSession.markSeen(outbound.roomName(), outbound.seq());
+                }
                 if (writerDrainThenStop && attachedSession.outboundSize() == 0) return;
             }
         } catch (InterruptedException e) {
@@ -286,6 +301,26 @@ public final class ConnectionHandler implements Runnable {
             // Broken sockets are expected. The Session remains resumable.
         } finally {
             attachedSession.detachConnection(generation);
+        }
+    }
+
+    private void enqueueResumeReplay(Session resumed) {
+        String roomName = resumed.currentRoomName();
+        if (roomName == null) return;
+
+        Room room = state.rooms().get(roomName);
+        if (room == null) {
+            resumed.leaveRoom();
+            resumed.enqueue("LEFT " + roomName);
+            return;
+        }
+
+        long lastSeen = resumed.lastSeenSeq(room.name());
+        var missed = room.historyAfter(lastSeen, room.historyLimit());
+        resumed.enqueue("JOINED " + room.name());
+        resumed.enqueue("HIST " + missed.size());
+        for (RoomMessage message : missed) {
+            resumed.enqueueRoomMessage(room.name(), message);
         }
     }
 
