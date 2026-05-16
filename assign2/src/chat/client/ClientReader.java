@@ -18,12 +18,18 @@ public final class ClientReader implements Runnable {
     private final ClientState state;
     private final PrintStream out;
     private final PrintStream err;
+    private final boolean stopStateOnEnd;
 
     public ClientReader(Frame frame, ClientState state, PrintStream out, PrintStream err) {
+        this(frame, state, out, err, true);
+    }
+
+    public ClientReader(Frame frame, ClientState state, PrintStream out, PrintStream err, boolean stopStateOnEnd) {
         this.frame = Objects.requireNonNull(frame, "frame");
         this.state = Objects.requireNonNull(state, "state");
         this.out = Objects.requireNonNull(out, "out");
         this.err = Objects.requireNonNull(err, "err");
+        this.stopStateOnEnd = stopStateOnEnd;
     }
 
     @Override
@@ -37,7 +43,7 @@ public final class ClientReader implements Runnable {
         } catch (IOException e) {
             if (state.isRunning()) err.println("[client] connection closed: " + e.getMessage());
         } finally {
-            state.stop();
+            if (stopStateOnEnd) state.stop();
         }
     }
 
@@ -53,6 +59,7 @@ public final class ClientReader implements Runnable {
         if (line.startsWith("OK CREATED ")) return "[rooms] created " + line.substring("OK CREATED ".length());
         if (line.startsWith("JOINED ")) return "[room] joined " + line.substring("JOINED ".length());
         if (line.startsWith("LEFT ")) return "[room] left " + line.substring("LEFT ".length());
+        if (line.startsWith("HIST ")) return "[history] replaying " + line.substring("HIST ".length()) + " frame(s)";
         if (line.startsWith("SYS ")) return "* " + line.substring("SYS ".length());
         if (line.startsWith("ROOMS ")) return formatRooms(line);
         if (line.startsWith("MSG ")) return formatMessage(line);

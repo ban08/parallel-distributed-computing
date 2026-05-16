@@ -9,6 +9,7 @@ public final class ClientState {
     private boolean running = true;
     private String username;
     private String pendingUsername;
+    private String pendingResumeToken;
     private String token;
     private String currentRoom;
 
@@ -40,6 +41,16 @@ public final class ClientState {
         }
     }
 
+    public void rememberResumeAttempt(String attemptedToken) {
+        Objects.requireNonNull(attemptedToken, "attemptedToken");
+        lock.lock();
+        try {
+            pendingResumeToken = attemptedToken;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     public void observeServerFrame(String line) {
         Objects.requireNonNull(line, "line");
 
@@ -51,12 +62,21 @@ public final class ClientState {
                 pendingUsername = null;
             } else if (line.startsWith("OK RESUMED ")) {
                 username = line.substring("OK RESUMED ".length()).trim();
+                if (pendingResumeToken != null) {
+                    token = pendingResumeToken;
+                    pendingResumeToken = null;
+                }
             } else if (line.startsWith("OK USER ")) {
                 username = line.substring("OK USER ".length()).trim();
             } else if (line.startsWith("JOINED ")) {
                 currentRoom = line.substring("JOINED ".length()).trim();
             } else if (line.startsWith("LEFT ")) {
                 currentRoom = null;
+            } else if ("ERR invalid token".equals(line) || "ERR UNKNOWN_TOKEN".equals(line)) {
+                username = null;
+                token = null;
+                currentRoom = null;
+                pendingResumeToken = null;
             } else if ("BYE".equals(line)) {
                 running = false;
             }
