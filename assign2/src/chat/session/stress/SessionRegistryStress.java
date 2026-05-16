@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class SessionRegistryStress {
     private static final int THREADS = 24;
     private static final int SESSIONS_PER_THREAD = 250;
-    private static final String DUMMY_HASH = "pbkdf2$120000$dGVzdF9zYWx0XzEyMzQ1Ng==$dGVzdF9oYXNoXzEyMzQ1Ng==";
+    private static final String DUMMY_HASH = "pbkdf2$600000$dGVzdF9zYWx0XzEyMzQ1Ng==$dGVzdF9oYXNoXzEyMzQ1Ng==";
 
     public static void main(String[] args) throws Exception {
         SessionRegistry registry = new SessionRegistry();

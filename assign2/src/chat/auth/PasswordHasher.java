@@ -14,7 +14,7 @@ import javax.crypto.spec.PBEKeySpec;
 public final class PasswordHasher {
     private static final String ALGORITHM = "PBKDF2WithHmacSHA256";
     private static final String PREFIX = "pbkdf2";
-    private static final int ITERATIONS = 120_000;
+    private static final int ITERATIONS = 600_000;
     private static final int SALT_BYTES = 16;
     private static final int HASH_BITS = 256;
 

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Thread-safe user registry backed by LockedMap.
@@ -23,7 +24,7 @@ public final class UserRegistry {
     private final LockedMap<String, User> users = new LockedMap<>();
     private final PasswordHasher hasher;
     private final UsersFile usersFile;
-    private final Object persistLock = new Object();
+    private final ReentrantLock persistLock = new ReentrantLock();
 
     public UserRegistry(PasswordHasher hasher) {
         this(hasher, null);
@@ -84,7 +85,8 @@ public final class UserRegistry {
         Objects.requireNonNull(password, "password");
         String normalized = User.normalizeUsername(username);
 
-        synchronized (persistLock) {
+        persistLock.lock();
+        try {
             if (users.containsKey(normalized)) return false;
 
             User created = new User(normalized, hasher.hash(password));
@@ -99,6 +101,8 @@ public final class UserRegistry {
                 }
             }
             return true;
+        } finally {
+            persistLock.unlock();
         }
     }
 

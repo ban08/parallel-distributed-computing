@@ -1,2 +1,2 @@
 # username:passwordHash
-miguel:pbkdf2$120000$a7EEoaFCAo6cDZZ1AggU0Q==$+fdDsiRrnG6WdZKXhCv65zxlhsv1KCD1/HlDgdezgzY=
+miguel:pbkdf2$600000$TBi4QEhWzDMwOCc0afS3TQ==$Y9ijkrqcSEMxk+fVnQBoTnV+OsIRIyEGR84YNbc4iCA=

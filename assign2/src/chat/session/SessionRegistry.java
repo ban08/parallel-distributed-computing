@@ -15,7 +15,7 @@ import java.util.Set;
  * a token and recover its previous Session without sending the password again.
  */
 public final class SessionRegistry {
-    public static final Duration DEFAULT_TOKEN_TTL = Duration.ofHours(2);
+    public static final Duration DEFAULT_TOKEN_TTL = Duration.ofHours(24);
 
     private final LockedMap<String, Session> byToken = new LockedMap<>();
 

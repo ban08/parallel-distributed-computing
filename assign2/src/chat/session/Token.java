@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 /** Secure session token. Value format is URL-safe Base64 without padding. */
 public record Token(String value, Instant issuedAt, Instant expiresAt) {
     private static final int TOKEN_BYTES = 32;
-    private static final Duration DEFAULT_TTL = Duration.ofHours(2);
+    private static final Duration DEFAULT_TTL = Duration.ofHours(24);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Pattern TOKEN_VALUE = Pattern.compile("[A-Za-z0-9_-]{32,}");
