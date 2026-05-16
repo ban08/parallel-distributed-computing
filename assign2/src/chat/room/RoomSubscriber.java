@@ -13,4 +13,12 @@ public interface RoomSubscriber {
 
     /** Enqueues one outbound frame for this subscriber. */
     boolean enqueue(String frame);
+
+    /**
+     * Enqueues a room timeline message. Sessions override this to keep sequence
+     * metadata for reconnect replay; simple test subscribers can use the frame.
+     */
+    default boolean enqueueRoomMessage(String roomName, RoomMessage message) {
+        return enqueue(message.toFrame());
+    }
 }

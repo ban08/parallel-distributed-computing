@@ -3,9 +3,13 @@ package chat.session;
 import chat.auth.User;
 import chat.concurrent.BoundedQueue;
 import chat.room.Room;
+import chat.room.RoomMessage;
 import chat.room.RoomSubscriber;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,7 +26,8 @@ public final class Session implements RoomSubscriber, AutoCloseable {
 
     private final User user;
     private final Token token;
-    private final BoundedQueue<String> outbound;
+    private final BoundedQueue<OutboundFrame> outbound;
+    private final Map<String, Long> lastSeenSeqByRoom = new HashMap<>();
     private final ReentrantLock stateLock = new ReentrantLock();
     private boolean closed;
     private long connectionGeneration;
@@ -148,6 +153,7 @@ public final class Session implements RoomSubscriber, AutoCloseable {
         try {
             if (closed) throw new IllegalStateException("session is closed");
             currentRoomName = normalized;
+            lastSeenSeqByRoom.putIfAbsent(normalized, 0L);
         } finally {
             stateLock.unlock();
         }
@@ -164,17 +170,51 @@ public final class Session implements RoomSubscriber, AutoCloseable {
         }
     }
 
+    public long lastSeenSeq(String roomName) {
+        String normalized = Room.normalizeName(roomName);
+        stateLock.lock();
+        try {
+            return lastSeenSeqByRoom.getOrDefault(normalized, 0L);
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    public void markSeen(String roomName, long seq) {
+        if (seq < 0L) throw new IllegalArgumentException("seq cannot be negative");
+        String normalized = Room.normalizeName(roomName);
+        stateLock.lock();
+        try {
+            long current = lastSeenSeqByRoom.getOrDefault(normalized, 0L);
+            if (seq > current) lastSeenSeqByRoom.put(normalized, seq);
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
     /**
      * Enqueues a frame without blocking. Returns false if the session is closed
      * or the bounded queue is full.
      */
     @Override
     public boolean enqueue(String frame) {
-        validateFrame(frame);
+        OutboundFrame outboundFrame = OutboundFrame.plain(frame);
         stateLock.lock();
         try {
             if (closed) return false;
-            return outbound.offer(frame);
+            return outbound.offer(outboundFrame);
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    @Override
+    public boolean enqueueRoomMessage(String roomName, RoomMessage message) {
+        OutboundFrame outboundFrame = OutboundFrame.room(roomName, message);
+        stateLock.lock();
+        try {
+            if (closed) return false;
+            return outbound.offer(outboundFrame);
         } finally {
             stateLock.unlock();
         }
@@ -182,24 +222,33 @@ public final class Session implements RoomSubscriber, AutoCloseable {
 
     /** Enqueues a frame, waiting for capacity. Mostly useful in tests/bootstrap. */
     public void putOutbound(String frame) throws InterruptedException {
-        validateFrame(frame);
+        OutboundFrame outboundFrame = OutboundFrame.plain(frame);
         stateLock.lock();
         try {
             if (closed) throw new IllegalStateException("session is closed");
         } finally {
             stateLock.unlock();
         }
-        outbound.put(frame);
+        outbound.put(outboundFrame);
     }
 
     /** Takes the next outbound frame, blocking while none is available. */
     public String takeOutbound() throws InterruptedException {
+        return takeOutboundFrame().line();
+    }
+
+    public OutboundFrame takeOutboundFrame() throws InterruptedException {
         return outbound.take();
     }
 
     /** Polls the next outbound frame, returning null on timeout. */
     public String pollOutbound(long timeout, TimeUnit unit) throws InterruptedException {
-        return outbound.poll(timeout, unit);
+        OutboundFrame frame = outbound.poll(timeout, unit);
+        return frame == null ? null : frame.line();
+    }
+
+    public int clearOutbound() {
+        return outbound.drainTo(new ArrayList<>());
     }
 
     public int outboundSize() {
@@ -237,6 +286,31 @@ public final class Session implements RoomSubscriber, AutoCloseable {
         Objects.requireNonNull(frame, "frame");
         if (frame.indexOf('\n') >= 0 || frame.indexOf('\r') >= 0) {
             throw new IllegalArgumentException("frame must not contain newline characters");
+        }
+    }
+
+    public record OutboundFrame(String line, String roomName, long seq) {
+        public OutboundFrame {
+            validateFrame(line);
+            if (roomName != null) {
+                roomName = Room.normalizeName(roomName);
+                if (seq <= 0L) throw new IllegalArgumentException("room frame seq must be positive");
+            } else if (seq != 0L) {
+                throw new IllegalArgumentException("plain frame seq must be zero");
+            }
+        }
+
+        public static OutboundFrame plain(String line) {
+            return new OutboundFrame(line, null, 0L);
+        }
+
+        public static OutboundFrame room(String roomName, RoomMessage message) {
+            Objects.requireNonNull(message, "message");
+            return new OutboundFrame(message.toFrame(), roomName, message.seq());
+        }
+
+        public boolean hasRoomSequence() {
+            return roomName != null;
         }
     }
 }

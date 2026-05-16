@@ -2,6 +2,7 @@ package chat.session;
 
 import chat.auth.PasswordHasher;
 import chat.auth.User;
+import chat.room.RoomMessage;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -66,6 +67,17 @@ public final class SessionManualTest {
         session.enterRoom(" Library ");
         if (!session.inRoom()) throw new AssertionError("session should be in a room");
         if (!"Library".equals(session.currentRoomName())) throw new AssertionError("room name should be normalized");
+        RoomMessage roomMessage = new RoomMessage(7L, "bob", 1234L, "hello", false);
+        if (!session.enqueueRoomMessage("Library", roomMessage)) throw new AssertionError("room enqueue failed");
+        Session.OutboundFrame outbound = session.takeOutboundFrame();
+        if (!"MSG bob 1234 hello".equals(outbound.line())) throw new AssertionError("bad room frame");
+        if (!"Library".equals(outbound.roomName())) throw new AssertionError("bad outbound room");
+        if (outbound.seq() != 7L) throw new AssertionError("bad outbound seq");
+        if (session.lastSeenSeq("Library") != 0L) throw new AssertionError("last seen should start at zero");
+        session.markSeen(outbound.roomName(), outbound.seq());
+        if (session.lastSeenSeq("Library") != 7L) throw new AssertionError("last seen did not advance");
+        session.markSeen("Library", 6L);
+        if (session.lastSeenSeq("Library") != 7L) throw new AssertionError("last seen should never move backwards");
         if (!"Library".equals(session.leaveRoom())) throw new AssertionError("leave should return previous room");
         if (session.currentRoomName() != null) throw new AssertionError("session should have no room after leave");
 

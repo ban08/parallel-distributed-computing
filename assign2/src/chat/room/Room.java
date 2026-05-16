@@ -231,11 +231,10 @@ public class Room {
         }
     }
 
-    private static void broadcast(List<RoomSubscriber> targets, RoomMessage message) {
-        String frame = message.toFrame();
+    private void broadcast(List<RoomSubscriber> targets, RoomMessage message) {
         for (RoomSubscriber target : targets) {
             try {
-                target.enqueue(frame);
+                target.enqueueRoomMessage(name, message);
             } catch (RuntimeException ignored) {
                 // A broken subscriber must not prevent delivery to the rest.
             }
