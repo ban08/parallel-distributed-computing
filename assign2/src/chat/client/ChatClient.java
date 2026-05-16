@@ -19,24 +19,47 @@ public final class ChatClient {
              BufferedReader stdin = new BufferedReader(
                      new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
 
-            Thread.ofVirtual().name("client-reader").start(() -> {
-                try {
-                    String line;
-                    while ((line = frame.readLine()) != null) {
-                        System.out.println("< " + line);
-                    }
-                } catch (IOException ignored) {
-                    // socket closed
-                }
-            });
+            ClientState state = new ClientState();
+            Thread reader = Thread.ofVirtual()
+                    .name("client-reader")
+                    .start(new ClientReader(frame, state, System.out, System.err));
+            Thread input = Thread.ofVirtual()
+                    .name("client-input")
+                    .start(new ClientInput(frame, stdin, state, System.out, System.err));
 
-            String userLine;
-            while ((userLine = stdin.readLine()) != null) {
-                frame.writeLine(userLine);
-            }
-        } catch (IOException e) {
+            waitUntilOneStops(reader, input);
+            if (!input.isAlive() && reader.isAlive()) joinQuietly(reader, 1000L);
+            state.stop();
+            closeQuietly(frame);
+            reader.interrupt();
+            input.interrupt();
+            joinQuietly(reader, 1000L);
+        } catch (IOException | InterruptedException e) {
             System.err.println("[client] " + e.getMessage());
             System.exit(1);
+        }
+    }
+
+    private static void waitUntilOneStops(Thread reader, Thread input) throws InterruptedException {
+        while (reader.isAlive() && input.isAlive()) {
+            reader.join(250L);
+            input.join(250L);
+        }
+    }
+
+    private static void joinQuietly(Thread thread, long millis) {
+        try {
+            thread.join(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void closeQuietly(Frame frame) {
+        try {
+            frame.close();
+        } catch (IOException ignored) {
+            // already closed
         }
     }
 
