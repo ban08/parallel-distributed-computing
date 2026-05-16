@@ -1,5 +1,7 @@
 package chat.client;
 
+import java.util.Random;
+
 /** Manual checks for friendly client command parsing and server frame formatting. */
 public final class ClientCommandManualTest {
     public static void main(String[] args) {
@@ -12,6 +14,13 @@ public final class ClientCommandManualTest {
         state.observeServerFrame("OK TOKEN tok_123");
         expect(state.username(), "alice");
         expect(state.token(), "tok_123");
+
+        ClientInput.ClientCommand resume = ClientInput.parseUserLine("/resume tok_456", state);
+        expect(resume.protocolLine(), "TOKEN tok_456");
+        expect(resume.resumeToken(), "tok_456");
+        state.rememberResumeAttempt(resume.resumeToken());
+        state.observeServerFrame("OK RESUMED alice");
+        expect(state.token(), "tok_456");
 
         expect(ClientInput.parseUserLine("/list", state).protocolLine(), "LIST");
         expect(ClientInput.parseUserLine("/create Library", state).protocolLine(), "CREATE Library");
@@ -34,12 +43,25 @@ public final class ClientCommandManualTest {
 
         expect(ClientReader.formatServerFrame("ROOMS 0"), "[rooms] none");
         expect(ClientReader.formatServerFrame("ROOMS 2 Library Games"), "[rooms] Library Games");
+        expect(ClientReader.formatServerFrame("HIST 2"), "[history] replaying 2 frame(s)");
         expect(ClientReader.formatServerFrame("SYS bob entered the room"), "* bob entered the room");
         String formattedMessage = ClientReader.formatServerFrame("MSG alice 0 hello");
         if (!formattedMessage.startsWith("[") || !formattedMessage.endsWith("] alice: hello")) {
             throw new AssertionError("bad formatted message: " + formattedMessage);
         }
         expect(ClientReader.formatServerFrame("ERR not authenticated"), "[error] not authenticated");
+
+        ReconnectBackoff backoff = new ReconnectBackoff(10L, 50L, new Random(1L));
+        for (int i = 0; i < 10; i++) {
+            long delay = backoff.nextDelayMillis();
+            if (delay < 0L || delay > 50L) throw new AssertionError("backoff out of range: " + delay);
+        }
+
+        state.rememberResumeAttempt("bad");
+        state.observeServerFrame("ERR invalid token");
+        if (state.token() != null || state.currentRoom() != null) {
+            throw new AssertionError("invalid token should clear resumable state");
+        }
 
         state.observeServerFrame("BYE");
         if (state.isRunning()) throw new AssertionError("BYE should stop client state");

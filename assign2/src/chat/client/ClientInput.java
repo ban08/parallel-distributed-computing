@@ -1,7 +1,5 @@
 package chat.client;
 
-import chat.common.Frame;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -10,14 +8,15 @@ import java.util.Objects;
 
 /** Reads user-friendly slash commands and sends protocol frames. */
 public final class ClientInput implements Runnable {
-    private final Frame frame;
+    private final ConnectionManager connection;
     private final BufferedReader input;
     private final ClientState state;
     private final PrintStream out;
     private final PrintStream err;
 
-    public ClientInput(Frame frame, BufferedReader input, ClientState state, PrintStream out, PrintStream err) {
-        this.frame = Objects.requireNonNull(frame, "frame");
+    public ClientInput(ConnectionManager connection, BufferedReader input, ClientState state,
+                       PrintStream out, PrintStream err) {
+        this.connection = Objects.requireNonNull(connection, "connection");
         this.input = Objects.requireNonNull(input, "input");
         this.state = Objects.requireNonNull(state, "state");
         this.out = Objects.requireNonNull(out, "out");
@@ -40,7 +39,11 @@ public final class ClientInput implements Runnable {
                 if (command.protocolLine() == null) continue;
 
                 if (command.loginUsername() != null) state.rememberLoginAttempt(command.loginUsername());
-                frame.writeLine(command.protocolLine());
+                if (command.resumeToken() != null) state.rememberResumeAttempt(command.resumeToken());
+                if (!connection.send(command.protocolLine())) {
+                    out.println("[client] not connected; command was not sent.");
+                    continue;
+                }
                 if (command.stopAfterSend()) {
                     return;
                 }
@@ -71,7 +74,7 @@ public final class ClientInput implements Runnable {
         return switch (command) {
             case "help" -> ClientCommand.local(helpText());
             case "login" -> loginCommand(tail);
-            case "resume", "token" -> requiredTail("TOKEN", tail, "usage: /resume <token>");
+            case "resume", "token" -> resumeCommand(tail);
             case "list" -> noTail("LIST", tail, "usage: /list");
             case "create" -> requiredTail("CREATE", tail, "usage: /create <room>");
             case "join" -> requiredTail("JOIN", tail, "usage: /join <room>");
@@ -89,7 +92,12 @@ public final class ClientInput implements Runnable {
         if (tail.isBlank() || args.length != 2 || args[1].isBlank()) {
             return ClientCommand.local("usage: /login <username> <password>");
         }
-        return new ClientCommand("LOGIN " + args[0] + " " + args[1], null, false, args[0]);
+        return new ClientCommand("LOGIN " + args[0] + " " + args[1], null, false, args[0], null);
+    }
+
+    private static ClientCommand resumeCommand(String tail) {
+        if (tail.isBlank()) return ClientCommand.local("usage: /resume <token>");
+        return new ClientCommand("TOKEN " + tail, null, false, null, tail);
     }
 
     private static ClientCommand requiredTail(String protocolCommand, String tail, String usage) {
@@ -104,7 +112,7 @@ public final class ClientInput implements Runnable {
 
     private static ClientCommand quitCommand(String tail) {
         if (!tail.isBlank()) return ClientCommand.local("usage: /quit");
-        return new ClientCommand("QUIT", null, true, null);
+        return new ClientCommand("QUIT", null, true, null, null);
     }
 
     private static String helpText() {
@@ -123,13 +131,14 @@ public final class ClientInput implements Runnable {
                 after joining a room, plain text is sent as a message""";
     }
 
-    record ClientCommand(String protocolLine, String localMessage, boolean stopAfterSend, String loginUsername) {
+    record ClientCommand(String protocolLine, String localMessage, boolean stopAfterSend,
+                         String loginUsername, String resumeToken) {
         static ClientCommand send(String protocolLine) {
-            return new ClientCommand(protocolLine, null, false, null);
+            return new ClientCommand(protocolLine, null, false, null, null);
         }
 
         static ClientCommand local(String localMessage) {
-            return new ClientCommand(null, localMessage, false, null);
+            return new ClientCommand(null, localMessage, false, null, null);
         }
     }
 }
