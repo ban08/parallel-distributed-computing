@@ -62,6 +62,13 @@ public final class SessionManualTest {
         attached.detachConnection(secondGeneration);
         if (attached.ownsConnection(secondGeneration)) throw new AssertionError("detached generation still owns session");
 
+        if (session.inRoom()) throw new AssertionError("new session should not be in a room");
+        session.enterRoom(" Library ");
+        if (!session.inRoom()) throw new AssertionError("session should be in a room");
+        if (!"Library".equals(session.currentRoomName())) throw new AssertionError("room name should be normalized");
+        if (!"Library".equals(session.leaveRoom())) throw new AssertionError("leave should return previous room");
+        if (session.currentRoomName() != null) throw new AssertionError("session should have no room after leave");
+
         session.close();
         if (!session.isClosed()) throw new AssertionError("session should be closed");
         if (session.enqueue("AFTER_CLOSE")) throw new AssertionError("closed session accepted frame");

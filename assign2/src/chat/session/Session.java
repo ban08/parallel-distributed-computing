@@ -2,6 +2,7 @@ package chat.session;
 
 import chat.auth.User;
 import chat.concurrent.BoundedQueue;
+import chat.room.Room;
 import chat.room.RoomSubscriber;
 
 import java.time.Duration;
@@ -26,6 +27,7 @@ public final class Session implements RoomSubscriber, AutoCloseable {
     private boolean closed;
     private long connectionGeneration;
     private Thread writerThread;
+    private String currentRoomName;
 
     public Session(User user) {
         this(user, DEFAULT_OUTBOUND_CAPACITY, Token.issue());
@@ -122,6 +124,41 @@ public final class Session implements RoomSubscriber, AutoCloseable {
                 connectionGeneration++;
                 writerThread = null;
             }
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    public String currentRoomName() {
+        stateLock.lock();
+        try {
+            return currentRoomName;
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    public boolean inRoom() {
+        return currentRoomName() != null;
+    }
+
+    public void enterRoom(String roomName) {
+        String normalized = Room.normalizeName(roomName);
+        stateLock.lock();
+        try {
+            if (closed) throw new IllegalStateException("session is closed");
+            currentRoomName = normalized;
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    public String leaveRoom() {
+        stateLock.lock();
+        try {
+            String previous = currentRoomName;
+            currentRoomName = null;
+            return previous;
         } finally {
             stateLock.unlock();
         }
