@@ -1,0 +1,2 @@
+# username:passwordHash
+miguel:pbkdf2$120000$a7EEoaFCAo6cDZZ1AggU0Q==$+fdDsiRrnG6WdZKXhCv65zxlhsv1KCD1/HlDgdezgzY=

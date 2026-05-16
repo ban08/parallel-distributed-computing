@@ -1,0 +1,138 @@
+package chat.session;
+
+import chat.auth.User;
+import chat.concurrent.BoundedQueue;
+import chat.room.RoomSubscriber;
+
+import java.time.Duration;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * Authenticated user session.
+ *
+ * A Session owns a secure token and a bounded outbound queue. Server code should
+ * enqueue all outgoing frames here and let exactly one writer thread consume
+ * takeOutbound()/pollOutbound() and write to the TCP connection.
+ */
+public final class Session implements RoomSubscriber, AutoCloseable {
+    public static final int DEFAULT_OUTBOUND_CAPACITY = 256;
+
+    private final User user;
+    private final Token token;
+    private final BoundedQueue<String> outbound;
+    private final ReentrantLock stateLock = new ReentrantLock();
+    private boolean closed;
+
+    public Session(User user) {
+        this(user, DEFAULT_OUTBOUND_CAPACITY, Token.issue());
+    }
+
+    public Session(User user, int outboundCapacity) {
+        this(user, outboundCapacity, Token.issue());
+    }
+
+    public Session(User user, int outboundCapacity, Duration tokenTtl) {
+        this(user, outboundCapacity, Token.issue(tokenTtl));
+    }
+
+    public Session(User user, int outboundCapacity, Token token) {
+        this.user = Objects.requireNonNull(user, "user");
+        this.token = Objects.requireNonNull(token, "token");
+        this.outbound = new BoundedQueue<>(outboundCapacity);
+    }
+
+    public User user() {
+        return user;
+    }
+
+    @Override
+    public String username() {
+        return user.username();
+    }
+
+    public Token token() {
+        return token;
+    }
+
+    public String tokenValue() {
+        return token.value();
+    }
+
+    public boolean tokenExpired() {
+        return token.isExpired();
+    }
+
+    /**
+     * Enqueues a frame without blocking. Returns false if the session is closed
+     * or the bounded queue is full.
+     */
+    @Override
+    public boolean enqueue(String frame) {
+        validateFrame(frame);
+        stateLock.lock();
+        try {
+            if (closed) return false;
+            return outbound.offer(frame);
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    /** Enqueues a frame, waiting for capacity. Mostly useful in tests/bootstrap. */
+    public void putOutbound(String frame) throws InterruptedException {
+        validateFrame(frame);
+        stateLock.lock();
+        try {
+            if (closed) throw new IllegalStateException("session is closed");
+        } finally {
+            stateLock.unlock();
+        }
+        outbound.put(frame);
+    }
+
+    /** Takes the next outbound frame, blocking while none is available. */
+    public String takeOutbound() throws InterruptedException {
+        return outbound.take();
+    }
+
+    /** Polls the next outbound frame, returning null on timeout. */
+    public String pollOutbound(long timeout, TimeUnit unit) throws InterruptedException {
+        return outbound.poll(timeout, unit);
+    }
+
+    public int outboundSize() {
+        return outbound.size();
+    }
+
+    public int outboundCapacity() {
+        return outbound.capacity();
+    }
+
+    public boolean isClosed() {
+        stateLock.lock();
+        try {
+            return closed;
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    @Override
+    public void close() {
+        stateLock.lock();
+        try {
+            closed = true;
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    private static void validateFrame(String frame) {
+        Objects.requireNonNull(frame, "frame");
+        if (frame.indexOf('\n') >= 0 || frame.indexOf('\r') >= 0) {
+            throw new IllegalArgumentException("frame must not contain newline characters");
+        }
+    }
+}
