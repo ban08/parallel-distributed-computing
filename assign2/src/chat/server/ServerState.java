@@ -4,6 +4,7 @@ import chat.auth.PasswordHasher;
 import chat.auth.User;
 import chat.auth.UserRegistry;
 import chat.auth.UsersFile;
+import chat.room.RoomRegistry;
 import chat.session.Session;
 import chat.session.SessionRegistry;
 
@@ -23,11 +24,17 @@ public final class ServerState {
     private final Path usersPath;
     private final UserRegistry users;
     private final SessionRegistry sessions;
+    private final RoomRegistry rooms;
 
     public ServerState(Path usersPath, UserRegistry users, SessionRegistry sessions) {
+        this(usersPath, users, sessions, new RoomRegistry());
+    }
+
+    public ServerState(Path usersPath, UserRegistry users, SessionRegistry sessions, RoomRegistry rooms) {
         this.usersPath = Objects.requireNonNull(usersPath, "usersPath");
         this.users = Objects.requireNonNull(users, "users");
         this.sessions = Objects.requireNonNull(sessions, "sessions");
+        this.rooms = Objects.requireNonNull(rooms, "rooms");
     }
 
     /** Loads users from disk and creates empty session registry. */
@@ -50,6 +57,10 @@ public final class ServerState {
 
     public SessionRegistry sessions() {
         return sessions;
+    }
+
+    public RoomRegistry rooms() {
+        return rooms;
     }
 
     /** Returns a newly-created session on successful login, otherwise null. */

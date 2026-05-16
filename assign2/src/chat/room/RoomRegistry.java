@@ -20,6 +20,16 @@ public final class RoomRegistry {
         return register(new Room(name, kind));
     }
 
+    public Room getOrCreateNormal(String name) {
+        String normalized = Room.normalizeName(name);
+        Room existing = rooms.get(normalized);
+        if (existing != null) return existing;
+
+        Room created = new Room(normalized, RoomKind.NORMAL);
+        Room previous = rooms.putIfAbsent(normalized, created);
+        return previous == null ? created : previous;
+    }
+
     public Room register(Room room) {
         Objects.requireNonNull(room, "room");
         Room previous = rooms.putIfAbsent(room.name(), room);

@@ -16,13 +16,13 @@ public final class ConnectionHandlerManualTest {
         if (!state.users().register("miguel", "password123".toCharArray())) {
             throw new AssertionError("failed to register test user");
         }
-
         try (ServerSocket server = new ServerSocket(0)) {
             int port = server.getLocalPort();
             Thread acceptOne = Thread.ofVirtual().start(() -> acceptAndHandle(server, state));
 
             String token;
             try (Socket client = new Socket("localhost", port); Frame frame = new Frame(client)) {
+                client.setSoTimeout(3000);
                 frame.writeLine("PING");
                 expect(frame.readLine(), "PONG");
 
@@ -49,6 +49,7 @@ public final class ConnectionHandlerManualTest {
 
             Thread acceptResume = Thread.ofVirtual().start(() -> acceptAndHandle(server, state));
             try (Socket client = new Socket("localhost", port); Frame frame = new Frame(client)) {
+                client.setSoTimeout(3000);
                 frame.writeLine("TOKEN " + token);
                 expect(frame.readLine(), "OK RESUMED miguel");
 
@@ -62,6 +63,64 @@ public final class ConnectionHandlerManualTest {
                 expect(frame.readLine(), "BYE");
             }
             acceptResume.join();
+
+            Thread acceptAlice = Thread.ofVirtual().start(() -> acceptAndHandle(server, state));
+            Thread acceptBob = Thread.ofVirtual().start(() -> acceptAndHandle(server, state));
+            try (
+                    Socket alice = new Socket("localhost", port);
+                    Socket bob = new Socket("localhost", port);
+                    Frame aliceFrame = new Frame(alice);
+                    Frame bobFrame = new Frame(bob)
+            ) {
+                alice.setSoTimeout(3000);
+                bob.setSoTimeout(3000);
+
+                login(aliceFrame, "miguel", "password123");
+                login(bobFrame, "bob", "bob123");
+
+                aliceFrame.writeLine("LIST");
+                expect(aliceFrame.readLine(), "ROOMS 0");
+
+                aliceFrame.writeLine("CREATE Library");
+                expect(aliceFrame.readLine(), "OK CREATED Library");
+
+                aliceFrame.writeLine("CREATE Library");
+                expect(aliceFrame.readLine(), "ERR room exists");
+
+                aliceFrame.writeLine("LIST");
+                expect(aliceFrame.readLine(), "ROOMS 1 Library");
+
+                aliceFrame.writeLine("JOIN Library");
+                expect(aliceFrame.readLine(), "JOINED Library");
+                expect(aliceFrame.readLine(), "SYS miguel entered the room");
+
+                bobFrame.writeLine("JOIN Library");
+                expect(bobFrame.readLine(), "JOINED Library");
+                expect(bobFrame.readLine(), "SYS bob entered the room");
+                expect(aliceFrame.readLine(), "SYS bob entered the room");
+
+                aliceFrame.writeLine("MSG hello bob");
+                expectRoomMessage(aliceFrame.readLine(), "miguel", "hello bob");
+                expectRoomMessage(bobFrame.readLine(), "miguel", "hello bob");
+
+                bobFrame.writeLine("LEAVE");
+                expect(bobFrame.readLine(), "LEFT Library");
+                expect(aliceFrame.readLine(), "SYS bob left the room");
+
+                bobFrame.writeLine("MSG after leave");
+                expect(bobFrame.readLine(), "ERR not in room");
+
+                bobFrame.writeLine("JOIN AutoRoom");
+                expect(bobFrame.readLine(), "JOINED AutoRoom");
+                expect(bobFrame.readLine(), "SYS bob entered the room");
+
+                bobFrame.writeLine("QUIT");
+                expect(bobFrame.readLine(), "BYE");
+                aliceFrame.writeLine("QUIT");
+                expect(aliceFrame.readLine(), "BYE");
+            }
+            acceptAlice.join();
+            acceptBob.join();
         }
 
         System.out.println("PASS ConnectionHandlerManualTest");
@@ -76,9 +135,34 @@ public final class ConnectionHandlerManualTest {
         }
     }
 
+    private static void login(Frame frame, String username, String password) throws Exception {
+        frame.writeLine("LOGIN " + username + " " + password);
+        expectStartsWith(frame.readLine(), "OK TOKEN ");
+    }
+
     private static void expect(String actual, String expected) {
         if (!expected.equals(actual)) {
             throw new AssertionError("expected <" + expected + "> but got <" + actual + ">");
+        }
+    }
+
+    private static void expectStartsWith(String actual, String prefix) {
+        if (actual == null || !actual.startsWith(prefix)) {
+            throw new AssertionError("expected prefix <" + prefix + "> but got <" + actual + ">");
+        }
+    }
+
+    private static void expectRoomMessage(String actual, String author, String text) {
+        String prefix = "MSG " + author + " ";
+        if (actual == null || !actual.startsWith(prefix) || !actual.endsWith(" " + text)) {
+            throw new AssertionError("bad room message: " + actual);
+        }
+
+        String epoch = actual.substring(prefix.length(), actual.length() - text.length() - 1);
+        try {
+            Long.parseLong(epoch);
+        } catch (NumberFormatException e) {
+            throw new AssertionError("bad room message timestamp: " + actual, e);
         }
     }
 
