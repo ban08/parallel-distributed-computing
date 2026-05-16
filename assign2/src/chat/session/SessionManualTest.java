@@ -39,6 +39,29 @@ public final class SessionManualTest {
         Thread.sleep(40);
         if (!shortLived.isExpired(Instant.now())) throw new AssertionError("token should expire");
 
+        Session attached = new Session(user, 2, Duration.ofMinutes(30));
+        long firstGeneration = attached.attachConnection();
+        boolean[] interrupted = new boolean[1];
+        Thread writer = Thread.ofVirtual().name("manual-session-writer").start(() -> {
+            try {
+                attached.takeOutbound();
+                throw new AssertionError("stale writer should have been interrupted");
+            } catch (InterruptedException e) {
+                interrupted[0] = true;
+                Thread.currentThread().interrupt();
+            }
+        });
+        attached.attachWriter(firstGeneration, writer);
+
+        long secondGeneration = attached.attachConnection();
+        writer.join(1000);
+        if (writer.isAlive()) throw new AssertionError("previous writer was not interrupted");
+        if (!interrupted[0]) throw new AssertionError("previous writer did not observe interrupt");
+        if (attached.ownsConnection(firstGeneration)) throw new AssertionError("stale generation still owns session");
+        if (!attached.ownsConnection(secondGeneration)) throw new AssertionError("new generation should own session");
+        attached.detachConnection(secondGeneration);
+        if (attached.ownsConnection(secondGeneration)) throw new AssertionError("detached generation still owns session");
+
         session.close();
         if (!session.isClosed()) throw new AssertionError("session should be closed");
         if (session.enqueue("AFTER_CLOSE")) throw new AssertionError("closed session accepted frame");

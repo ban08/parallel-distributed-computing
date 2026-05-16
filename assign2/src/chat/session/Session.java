@@ -24,6 +24,8 @@ public final class Session implements RoomSubscriber, AutoCloseable {
     private final BoundedQueue<String> outbound;
     private final ReentrantLock stateLock = new ReentrantLock();
     private boolean closed;
+    private long connectionGeneration;
+    private Thread writerThread;
 
     public Session(User user) {
         this(user, DEFAULT_OUTBOUND_CAPACITY, Token.issue());
@@ -62,6 +64,67 @@ public final class Session implements RoomSubscriber, AutoCloseable {
 
     public boolean tokenExpired() {
         return token.isExpired();
+    }
+
+    /**
+     * Marks a new TCP connection as the active one for this session.
+     *
+     * Any previous writer is interrupted so it cannot keep consuming outbound
+     * frames after a reconnect attaches a newer socket.
+     */
+    public long attachConnection() {
+        Thread previousWriter;
+        long generation;
+
+        stateLock.lock();
+        try {
+            if (closed) throw new IllegalStateException("session is closed");
+            generation = ++connectionGeneration;
+            previousWriter = writerThread;
+            writerThread = null;
+        } finally {
+            stateLock.unlock();
+        }
+
+        if (previousWriter != null) previousWriter.interrupt();
+        return generation;
+    }
+
+    /** Records the virtual thread currently writing this connection. */
+    public void attachWriter(long generation, Thread writer) {
+        Objects.requireNonNull(writer, "writer");
+
+        boolean stale;
+        stateLock.lock();
+        try {
+            stale = closed || generation != connectionGeneration;
+            if (!stale) writerThread = writer;
+        } finally {
+            stateLock.unlock();
+        }
+
+        if (stale) writer.interrupt();
+    }
+
+    public boolean ownsConnection(long generation) {
+        stateLock.lock();
+        try {
+            return !closed && generation == connectionGeneration;
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    public void detachConnection(long generation) {
+        stateLock.lock();
+        try {
+            if (generation == connectionGeneration) {
+                connectionGeneration++;
+                writerThread = null;
+            }
+        } finally {
+            stateLock.unlock();
+        }
     }
 
     /**
@@ -121,12 +184,16 @@ public final class Session implements RoomSubscriber, AutoCloseable {
 
     @Override
     public void close() {
+        Thread writer;
         stateLock.lock();
         try {
             closed = true;
+            writer = writerThread;
+            writerThread = null;
         } finally {
             stateLock.unlock();
         }
+        if (writer != null) writer.interrupt();
     }
 
     private static void validateFrame(String frame) {

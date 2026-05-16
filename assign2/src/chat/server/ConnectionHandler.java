@@ -6,7 +6,6 @@ import chat.session.Session;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -26,6 +25,9 @@ public final class ConnectionHandler implements Runnable {
     private final ServerState state;
     private final Socket socket;
     private Session session;
+    private Thread writerThread;
+    private long writerGeneration;
+    private volatile boolean writerDrainThenStop;
 
     public ConnectionHandler(ServerState state, Socket socket) {
         this.state = Objects.requireNonNull(state, "state");
@@ -37,7 +39,9 @@ public final class ConnectionHandler implements Runnable {
         var peer = socket.getRemoteSocketAddress();
         System.out.println("[server] connected: " + peer);
 
-        try (Frame frame = new Frame(socket)) {
+        Frame frame = null;
+        try {
+            frame = new Frame(socket);
             String line;
             while ((line = frame.readLine()) != null) {
                 boolean keepGoing = handleFrame(frame, line);
@@ -47,6 +51,8 @@ public final class ConnectionHandler implements Runnable {
             // Broken connections are expected in a TCP chat server. The Session
             // is kept in SessionRegistry so the client can reconnect with TOKEN.
         } finally {
+            finishWriter();
+            closeQuietly(frame);
             System.out.println("[server] disconnected: " + peer);
         }
     }
@@ -54,12 +60,10 @@ public final class ConnectionHandler implements Runnable {
     private boolean handleFrame(Frame frame, String line) throws IOException {
         try {
             if (line == null || line.isBlank()) {
-                frame.writeLine("ERR empty frame");
-                return true;
+                return send(frame, "ERR empty frame");
             }
             if (line.length() > MAX_FRAME_CHARS) {
-                frame.writeLine("ERR frame too long");
-                return true;
+                return send(frame, "ERR frame too long");
             }
 
             String[] parts = line.trim().split("\\s+", 3);
@@ -67,45 +71,38 @@ public final class ConnectionHandler implements Runnable {
 
             switch (command) {
                 case "PING" -> {
-                    frame.writeLine("PONG");
-                    return true;
+                    return send(frame, "PONG");
                 }
                 case "LOGIN" -> {
-                    handleLogin(frame, parts);
-                    return true;
+                    return handleLogin(frame, parts);
                 }
                 case "TOKEN", "RESUME" -> {
-                    handleToken(frame, parts);
-                    return true;
+                    return handleToken(frame, parts);
                 }
                 case "WHOAMI" -> {
-                    if (session == null) frame.writeLine("ERR not authenticated");
-                    else frame.writeLine("OK USER " + session.username());
-                    return true;
+                    if (session == null) return send(frame, "ERR not authenticated");
+                    return send(frame, "OK USER " + session.username());
                 }
                 case "QUIT" -> {
-                    frame.writeLine("BYE");
+                    send(frame, "BYE");
+                    writerDrainThenStop = session != null;
                     return false;
                 }
                 default -> {
-                    frame.writeLine("ERR unknown command");
-                    return true;
+                    return send(frame, "ERR unknown command");
                 }
             }
         } catch (IllegalArgumentException e) {
-            frame.writeLine("ERR bad frame");
-            return true;
+            return send(frame, "ERR bad frame");
         }
     }
 
-    private void handleLogin(Frame frame, String[] parts) throws IOException {
+    private boolean handleLogin(Frame frame, String[] parts) throws IOException {
         if (parts.length != 3) {
-            frame.writeLine("ERR usage LOGIN <username> <password>");
-            return;
+            return send(frame, "ERR usage LOGIN <username> <password>");
         }
         if (session != null) {
-            frame.writeLine("ERR already authenticated");
-            return;
+            return send(frame, "ERR already authenticated");
         }
 
         String username = parts[1];
@@ -113,32 +110,101 @@ public final class ConnectionHandler implements Runnable {
         try {
             Session created = state.login(username, password);
             if (created == null) {
-                frame.writeLine("ERR authentication failed");
-                return;
+                return send(frame, "ERR authentication failed");
             }
             session = created;
-            frame.writeLine("OK TOKEN " + created.tokenValue());
+            startWriter(created, frame);
+            return send(frame, "OK TOKEN " + created.tokenValue());
         } finally {
             PasswordHasher.clear(password);
         }
     }
 
-    private void handleToken(Frame frame, String[] parts) throws IOException {
+    private boolean handleToken(Frame frame, String[] parts) throws IOException {
         if (parts.length < 2) {
-            frame.writeLine("ERR usage TOKEN <token>");
-            return;
+            return send(frame, "ERR usage TOKEN <token>");
         }
         if (session != null) {
-            frame.writeLine("ERR already authenticated");
-            return;
+            return send(frame, "ERR already authenticated");
         }
 
         Session resumed = state.resume(parts[1]);
         if (resumed == null) {
-            frame.writeLine("ERR invalid token");
-            return;
+            return send(frame, "ERR invalid token");
         }
         session = resumed;
-        frame.writeLine("OK RESUMED " + resumed.username());
+        startWriter(resumed, frame);
+        return send(frame, "OK RESUMED " + resumed.username());
+    }
+
+    private boolean send(Frame frame, String line) throws IOException {
+        if (writerThread == null) {
+            frame.writeLine(line);
+            return true;
+        }
+        return session != null && session.enqueue(line);
+    }
+
+    private void startWriter(Session attachedSession, Frame frame) {
+        long generation = attachedSession.attachConnection();
+        writerGeneration = generation;
+        writerDrainThenStop = false;
+
+        Thread writer = Thread.ofVirtual()
+                .name("session-writer-" + attachedSession.username())
+                .start(() -> writerLoop(attachedSession, generation, frame));
+        attachedSession.attachWriter(generation, writer);
+        writerThread = writer;
+    }
+
+    private void writerLoop(Session attachedSession, long generation, Frame frame) {
+        try {
+            while (attachedSession.ownsConnection(generation)) {
+                String outbound = attachedSession.takeOutbound();
+                if (!attachedSession.ownsConnection(generation)) {
+                    attachedSession.enqueue(outbound);
+                    return;
+                }
+
+                frame.writeLine(outbound);
+                if (writerDrainThenStop && attachedSession.outboundSize() == 0) return;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            // Broken sockets are expected. The Session remains resumable.
+        } finally {
+            attachedSession.detachConnection(generation);
+        }
+    }
+
+    private void finishWriter() {
+        Thread writer = writerThread;
+        if (writer == null) return;
+
+        if (writerDrainThenStop) joinWriter(writer, 1000L);
+
+        if (writer.isAlive()) {
+            if (session != null) session.detachConnection(writerGeneration);
+            writer.interrupt();
+            joinWriter(writer, 1000L);
+        }
+    }
+
+    private static void joinWriter(Thread writer, long millis) {
+        try {
+            writer.join(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static void closeQuietly(Frame frame) {
+        if (frame == null) return;
+        try {
+            frame.close();
+        } catch (IOException ignored) {
+            // already closed
+        }
     }
 }

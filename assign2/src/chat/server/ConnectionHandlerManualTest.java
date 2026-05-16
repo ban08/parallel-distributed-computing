@@ -36,6 +36,9 @@ public final class ConnectionHandlerManualTest {
                 }
                 token = login.substring("OK TOKEN ".length());
 
+                frame.writeLine("PING");
+                expect(frame.readLine(), "PONG");
+
                 frame.writeLine("WHOAMI");
                 expect(frame.readLine(), "OK USER miguel");
 
@@ -48,6 +51,9 @@ public final class ConnectionHandlerManualTest {
             try (Socket client = new Socket("localhost", port); Frame frame = new Frame(client)) {
                 frame.writeLine("TOKEN " + token);
                 expect(frame.readLine(), "OK RESUMED miguel");
+
+                frame.writeLine("PING");
+                expect(frame.readLine(), "PONG");
 
                 frame.writeLine("WHOAMI");
                 expect(frame.readLine(), "OK USER miguel");
