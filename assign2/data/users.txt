@@ -1,2 +1,3 @@
 # username:passwordHash
+bob:pbkdf2$600000$KWriBNhEPVgDErWSxTb1FQ==$JNMDRkZXJuSu17Mc4DGcV8+XPUvhcx+SWlnY+lCU6w4=
 miguel:pbkdf2$600000$TBi4QEhWzDMwOCc0afS3TQ==$Y9ijkrqcSEMxk+fVnQBoTnV+OsIRIyEGR84YNbc4iCA=

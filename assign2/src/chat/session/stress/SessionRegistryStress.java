@@ -7,7 +7,6 @@ import chat.session.SessionRegistry;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /** Concurrent create/lookup/remove test for B4. */
 public final class SessionRegistryStress {
@@ -18,8 +17,8 @@ public final class SessionRegistryStress {
     public static void main(String[] args) throws Exception {
         SessionRegistry registry = new SessionRegistry();
         List<Thread> threads = new ArrayList<>();
-        AtomicInteger created = new AtomicInteger();
-        AtomicInteger removed = new AtomicInteger();
+        int[] created = new int[THREADS];
+        int[] removed = new int[THREADS];
 
         for (int t = 0; t < THREADS; t++) {
             final int threadId = t;
@@ -27,7 +26,7 @@ public final class SessionRegistryStress {
                 for (int i = 0; i < SESSIONS_PER_THREAD; i++) {
                     User user = new User("u" + threadId + "_" + i, DUMMY_HASH);
                     Session session = registry.create(user, 16, Duration.ofMinutes(5));
-                    created.incrementAndGet();
+                    created[threadId]++;
 
                     Session lookedUp = registry.lookup(session.tokenValue());
                     if (lookedUp != session) {
@@ -38,7 +37,7 @@ public final class SessionRegistryStress {
                         Session old = registry.remove(session.tokenValue());
                         if (old != session) throw new AssertionError("remove returned wrong session");
                         if (!session.isClosed()) throw new AssertionError("removed session not closed");
-                        removed.incrementAndGet();
+                        removed[threadId]++;
                     }
                 }
             });
@@ -50,12 +49,14 @@ public final class SessionRegistryStress {
         int expectedCreated = THREADS * SESSIONS_PER_THREAD;
         int expectedRemoved = THREADS * ((SESSIONS_PER_THREAD + 1) / 2);
         int expectedRemaining = expectedCreated - expectedRemoved;
+        int actualCreated = sum(created);
+        int actualRemoved = sum(removed);
 
-        if (created.get() != expectedCreated) {
-            throw new AssertionError("bad created count: " + created.get());
+        if (actualCreated != expectedCreated) {
+            throw new AssertionError("bad created count: " + actualCreated);
         }
-        if (removed.get() != expectedRemoved) {
-            throw new AssertionError("bad removed count: " + removed.get());
+        if (actualRemoved != expectedRemoved) {
+            throw new AssertionError("bad removed count: " + actualRemoved);
         }
         if (registry.size() != expectedRemaining) {
             throw new AssertionError("bad remaining count: " + registry.size() + ", expected " + expectedRemaining);
@@ -70,9 +71,15 @@ public final class SessionRegistryStress {
         int reaped = registry.removeExpired();
         if (reaped != 0) throw new AssertionError("unexpected expired sessions: " + reaped);
 
-        System.out.println("PASS SessionRegistryStress: created=" + created.get()
-                + ", removed=" + removed.get()
+        System.out.println("PASS SessionRegistryStress: created=" + actualCreated
+                + ", removed=" + actualRemoved
                 + ", remaining=" + registry.size());
+    }
+
+    private static int sum(int[] values) {
+        int total = 0;
+        for (int value : values) total += value;
+        return total;
     }
 
     private SessionRegistryStress() {}
