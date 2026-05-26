@@ -43,12 +43,6 @@ public final class BoundedQueue<E> {
         finally { lock.unlock(); }
     }
 
-    public int remainingCapacity() {
-        lock.lock();
-        try { return capacity - deque.size(); }
-        finally { lock.unlock(); }
-    }
-
     /** Inserts; blocks while full. */
     public void put(E e) throws InterruptedException {
         Objects.requireNonNull(e);
@@ -97,17 +91,6 @@ public final class BoundedQueue<E> {
             deque.addLast(e);
             notEmpty.signalAll();
             return true;
-        } finally { lock.unlock(); }
-    }
-
-    /** Removes head if any; never blocks. Returns null on empty. */
-    public E poll() {
-        lock.lock();
-        try {
-            if (deque.isEmpty()) return null;
-            E e = deque.removeFirst();
-            notFull.signalAll();
-            return e;
         } finally { lock.unlock(); }
     }
 

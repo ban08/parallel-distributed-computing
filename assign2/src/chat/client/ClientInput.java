@@ -6,7 +6,16 @@ import java.io.PrintStream;
 import java.util.Locale;
 import java.util.Objects;
 
-/** Reads user-friendly slash commands and sends protocol frames. */
+/**
+ * Reads user-friendly slash commands and sends protocol frames.
+ *
+ * Acts as the hand-written client stub in the sense of 2rpc.pdf slide 11:
+ * parseUserLine marshals a user command (e.g. "/login alice pw") into a wire
+ * frame ("LOGIN alice pw") and ConnectionManager.send transmits it. The
+ * matching "block for reply / unmarshal" step is decoupled: server frames are
+ * read asynchronously by ClientReader, which also handles unsolicited room
+ * broadcasts that classical RPC has no model for.
+ */
 public final class ClientInput implements Runnable {
     private final ConnectionManager connection;
     private final BufferedReader input;

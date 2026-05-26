@@ -15,6 +15,17 @@ import java.util.Objects;
 /**
  * One TCP connection reader/router.
  *
+ * Server-side dispatcher in the sense of 2rpc.pdf slide 13: handleFrame parses
+ * the (service, procedure) pair out of the incoming text frame and forwards
+ * to a per-procedure "server stub" method (handleLogin, handleJoin, ...) that
+ * unmarshals arguments, invokes the local function, and marshals the reply.
+ * The service is implicit (chat); the procedure is the first whitespace token.
+ *
+ * Only request/response commands follow the RPC pattern. Unsolicited
+ * server-to-client traffic (room broadcasts, SYS messages, HIST replay) is
+ * delivered through the per-session writer loop driven by Room.broadcast and
+ * is intentionally not RPC.
+ *
  * C2 protocol currently supported:
  *   PING
  *   LOGIN <username> <password>
