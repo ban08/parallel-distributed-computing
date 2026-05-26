@@ -77,6 +77,7 @@ public final class ClientInput implements Runnable {
             case "resume", "token" -> resumeCommand(tail);
             case "list" -> noTail("LIST", tail, "usage: /list");
             case "create" -> requiredTail("CREATE", tail, "usage: /create <room>");
+            case "create_ai" -> createAICommand(tail);
             case "join" -> requiredTail("JOIN", tail, "usage: /join <room>");
             case "msg" -> requiredTail("MSG", tail, "usage: /msg <text>");
             case "leave" -> noTail("LEAVE", tail, "usage: /leave");
@@ -98,6 +99,15 @@ public final class ClientInput implements Runnable {
     private static ClientCommand resumeCommand(String tail) {
         if (tail.isBlank()) return ClientCommand.local("usage: /resume <token>");
         return new ClientCommand("TOKEN " + tail, null, false, null, tail);
+    }
+
+    private static ClientCommand createAICommand(String tail) {
+        // Format: /create_ai <roomName> <prompt>
+        String[] args = tail.split("\\s+", 2);
+        if (tail.isBlank() || args.length < 2 || args[1].isBlank()) {
+            return ClientCommand.local("usage: /create_ai <room> <prompt>");
+        }
+        return ClientCommand.send("CREATE_AI " + args[0] + " " + args[1]);
     }
 
     private static ClientCommand requiredTail(String protocolCommand, String tail, String usage) {
@@ -122,6 +132,7 @@ public final class ClientInput implements Runnable {
                   /resume <token>
                   /list
                   /create <room>
+                  /create_ai <room> <prompt>
                   /join <room>
                   /msg <text>
                   /leave

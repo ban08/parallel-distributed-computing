@@ -129,7 +129,7 @@ public final class RoomBroadcastStress {
         if (registry.get("Alpha") != alpha) throw new AssertionError("Alpha lookup failed");
         if (registry.get("Beta") != beta) throw new AssertionError("Beta lookup failed");
         if (beta.kind() != RoomKind.AI) throw new AssertionError("Beta should be AI kind");
-        if (!List.of("Alpha", "Beta").equals(registry.names())) {
+        if (!List.of("Alpha", "Beta[AI]").equals(registry.names())) {
             throw new AssertionError("bad registry names: " + registry.names());
         }
 

@@ -1,5 +1,7 @@
 package chat.room;
 
+import chat.ai.AIRoom;
+import chat.ai.OllamaClient;
 import chat.concurrent.LockedMap;
 
 import java.util.ArrayList;
@@ -18,6 +20,19 @@ public final class RoomRegistry {
 
     public Room create(String name, RoomKind kind) {
         return register(new Room(name, kind));
+    }
+
+    /**
+     * Creates and registers an AI room backed by the given Ollama client.
+     *
+     * @throws IllegalArgumentException if the room name already exists or is invalid
+     */
+    public AIRoom createAI(String name, String systemPrompt, OllamaClient ollama) {
+        Objects.requireNonNull(systemPrompt, "systemPrompt");
+        Objects.requireNonNull(ollama, "ollama");
+        AIRoom aiRoom = new AIRoom(name, systemPrompt, ollama);
+        register(aiRoom);
+        return aiRoom;
     }
 
     public Room getOrCreateNormal(String name) {
@@ -55,10 +70,15 @@ public final class RoomRegistry {
         return rooms.size();
     }
 
+    /** Returns room listing entries (AI rooms have an [AI] suffix). */
     public List<String> names() {
-        List<String> names = new ArrayList<>(rooms.keys());
-        names.sort(Comparator.naturalOrder());
-        return names;
+        Map<String, Room> copy = rooms.snapshot();
+        List<String> entries = new ArrayList<>(copy.size());
+        for (Room room : copy.values()) {
+            entries.add(room.listEntry());
+        }
+        entries.sort(Comparator.naturalOrder());
+        return entries;
     }
 
     public List<Room> snapshot() {
@@ -68,3 +88,4 @@ public final class RoomRegistry {
         return values;
     }
 }
+

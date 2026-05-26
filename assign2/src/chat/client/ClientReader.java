@@ -56,6 +56,7 @@ public final class ClientReader implements Runnable {
         if (line.startsWith("OK TOKEN ")) return "[auth] logged in. token: " + line.substring("OK TOKEN ".length());
         if (line.startsWith("OK RESUMED ")) return "[auth] resumed as " + line.substring("OK RESUMED ".length());
         if (line.startsWith("OK USER ")) return "[auth] " + line.substring("OK USER ".length());
+        if (line.startsWith("OK CREATED_AI ")) return "[rooms] created AI room " + line.substring("OK CREATED_AI ".length());
         if (line.startsWith("OK CREATED ")) return "[rooms] created " + line.substring("OK CREATED ".length());
         if (line.startsWith("JOINED ")) return "[room] joined " + line.substring("JOINED ".length());
         if (line.startsWith("LEFT ")) return "[room] left " + line.substring("LEFT ".length());

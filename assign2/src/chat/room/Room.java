@@ -60,6 +60,11 @@ public class Room {
         return historyLimit;
     }
 
+    /** Returns the display name for room listings (AI rooms get an [AI] suffix). */
+    public String listEntry() {
+        return kind == RoomKind.AI ? name + "[AI]" : name;
+    }
+
     public long latestSeq() {
         lock.lock();
         try {
@@ -153,7 +158,23 @@ public class Room {
     }
 
     public List<RoomMessage> recentHistory(int maxCount) {
-        return historyAfter(0L, maxCount);
+        if (maxCount < 0) throw new IllegalArgumentException("maxCount cannot be negative");
+        lock.lock();
+        try {
+            int size = history.size();
+            int take = Math.min(size, maxCount);
+            if (take == 0) return List.of();
+
+            // Iterate backwards to grab only the tail entries
+            RoomMessage[] tail = new RoomMessage[take];
+            var it = history.descendingIterator();
+            for (int i = take - 1; i >= 0 && it.hasNext(); i--) {
+                tail[i] = it.next();
+            }
+            return List.of(tail);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public List<RoomSubscriber> subscribersSnapshot() {

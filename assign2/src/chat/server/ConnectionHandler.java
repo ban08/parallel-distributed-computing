@@ -1,5 +1,6 @@
 package chat.server;
 
+import chat.ai.OllamaClient;
 import chat.auth.PasswordHasher;
 import chat.common.Frame;
 import chat.room.Room;
@@ -21,6 +22,7 @@ import java.util.Objects;
  *   WHOAMI
  *   LIST
  *   CREATE <roomName>
+ *   CREATE_AI <roomName> <prompt>
  *   JOIN <roomName>
  *   MSG <text>
  *   LEAVE
@@ -98,6 +100,10 @@ public final class ConnectionHandler implements Runnable {
                     if (session == null) return send(frame, "ERR not authenticated");
                     return handleCreate(frame, tail(parts));
                 }
+                case "CREATE_AI" -> {
+                    if (session == null) return send(frame, "ERR not authenticated");
+                    return handleCreateAI(frame, parts);
+                }
                 case "JOIN" -> {
                     if (session == null) return send(frame, "ERR not authenticated");
                     return handleJoin(frame, tail(parts));
@@ -139,6 +145,31 @@ public final class ConnectionHandler implements Runnable {
         try {
             Room room = state.rooms().create(roomName);
             return send(frame, "OK CREATED " + room.name());
+        } catch (IllegalArgumentException e) {
+            if (state.rooms().exists(roomName)) return send(frame, "ERR room exists");
+            return send(frame, "ERR bad room name");
+        }
+    }
+
+    private boolean handleCreateAI(Frame frame, String[] parts) throws IOException {
+        // Format: CREATE_AI <roomName> <prompt>  (prompt may contain spaces)
+        if (parts.length < 3 || parts[2] == null || parts[2].isBlank()) {
+            return send(frame, "ERR usage CREATE_AI <roomName> <prompt>");
+        }
+
+        // parts[0]="CREATE_AI", parts[1]="roomName", parts[2]="the rest is prompt"
+        // But we split with limit 3, so check parts[1] for room name
+        String roomName = parts[1];
+        String prompt = parts[2];
+
+        OllamaClient ollama = state.ollamaClient();
+        if (ollama == null) {
+            return send(frame, "ERR AI rooms not available (Ollama not configured)");
+        }
+
+        try {
+            state.rooms().createAI(roomName, prompt, ollama);
+            return send(frame, "OK CREATED_AI " + Room.normalizeName(roomName));
         } catch (IllegalArgumentException e) {
             if (state.rooms().exists(roomName)) return send(frame, "ERR room exists");
             return send(frame, "ERR bad room name");
