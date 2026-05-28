@@ -110,5 +110,9 @@ public final class ServerState {
     public Session resume(String token) {
         return sessions.lookup(token);
     }
-}
 
+    /** Registers a new user in the in-memory registry and backing users file. */
+    public boolean register(String username, char[] password) throws IOException {
+        return users.register(username, password);
+    }
+}

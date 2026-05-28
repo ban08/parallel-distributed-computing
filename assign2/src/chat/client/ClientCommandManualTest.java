@@ -7,6 +7,8 @@ public final class ClientCommandManualTest {
     public static void main(String[] args) {
         ClientState state = new ClientState();
 
+        expect(ClientInput.parseUserLine("/register alice alice123", state).protocolLine(), "REGISTER alice alice123");
+
         ClientInput.ClientCommand login = ClientInput.parseUserLine("/login alice alice123", state);
         expect(login.protocolLine(), "LOGIN alice alice123");
         expect(login.loginUsername(), "alice");
@@ -24,6 +26,12 @@ public final class ClientCommandManualTest {
 
         expect(ClientInput.parseUserLine("/list", state).protocolLine(), "LIST");
         expect(ClientInput.parseUserLine("/create Library", state).protocolLine(), "CREATE Library");
+        expect(ClientInput.parseUserLine("/create AI doodle AI summarize availability", state).protocolLine(),
+                "CREATE AI doodle AI summarize availability");
+        expect(ClientInput.parseUserLine("/create_ai AI doodle -- summarize availability", state).protocolLine(),
+                "CREATE_AI AI doodle -- summarize availability");
+        expect(ClientInput.parseUserLine("/create_ai BotRoom summarize availability", state).protocolLine(),
+                "CREATE_AI BotRoom summarize availability");
         expect(ClientInput.parseUserLine("/join Library", state).protocolLine(), "JOIN Library");
 
         state.observeServerFrame("JOINED Library");
@@ -45,6 +53,7 @@ public final class ClientCommandManualTest {
         expect(ClientReader.formatServerFrame("ROOMS 2 Library Games"), "[rooms] Library Games");
         expect(ClientReader.formatServerFrame("HIST 2"), "[history] replaying 2 frame(s)");
         expect(ClientReader.formatServerFrame("SYS bob entered the room"), "* bob entered the room");
+        expect(ClientReader.formatServerFrame("OK REGISTERED alice"), "[auth] registered alice");
         String formattedMessage = ClientReader.formatServerFrame("MSG alice 0 hello");
         if (!formattedMessage.startsWith("[") || !formattedMessage.endsWith("] alice: hello")) {
             throw new AssertionError("bad formatted message: " + formattedMessage);

@@ -29,12 +29,19 @@ public final class ConnectionHandlerManualTest {
                 frame.writeLine("NOPE something");
                 expect(frame.readLine(), "ERR unknown command");
 
+                frame.writeLine("REGISTER carol carol123");
+                expect(frame.readLine(), "OK REGISTERED carol");
+
+                frame.writeLine("REGISTER carol carol123");
+                expect(frame.readLine(), "ERR user exists");
+
                 frame.writeLine("LOGIN miguel password123");
                 String login = frame.readLine();
                 if (login == null || !login.startsWith("OK TOKEN ")) {
                     throw new AssertionError("bad login response: " + login);
                 }
                 token = login.substring("OK TOKEN ".length());
+                expect(frame.readLine(), "ROOMS 0");
 
                 frame.writeLine("PING");
                 expect(frame.readLine(), "PONG");
@@ -87,8 +94,17 @@ public final class ConnectionHandlerManualTest {
                 aliceFrame.writeLine("CREATE Library");
                 expect(aliceFrame.readLine(), "ERR room exists");
 
+                aliceFrame.writeLine("CREATE AI doodle AI summarize availability");
+                expect(aliceFrame.readLine(), "OK CREATED_AI AI doodle");
+
+                aliceFrame.writeLine("CREATE_AI Meeting Bot -- collect availability");
+                expect(aliceFrame.readLine(), "OK CREATED_AI Meeting Bot");
+
+                aliceFrame.writeLine("CREATE_AI OneWord legacy prompt");
+                expect(aliceFrame.readLine(), "OK CREATED_AI OneWord");
+
                 aliceFrame.writeLine("LIST");
-                expect(aliceFrame.readLine(), "ROOMS 1 Library");
+                expect(aliceFrame.readLine(), "ROOMS 4 AI doodle[AI] Library Meeting Bot[AI] OneWord[AI]");
 
                 aliceFrame.writeLine("JOIN Library");
                 expect(aliceFrame.readLine(), "JOINED Library");
@@ -163,6 +179,7 @@ public final class ConnectionHandlerManualTest {
         frame.writeLine("LOGIN " + username + " " + password);
         String response = frame.readLine();
         expectStartsWith(response, "OK TOKEN ");
+        expect(frame.readLine(), "ROOMS 0");
         return response.substring("OK TOKEN ".length());
     }
 

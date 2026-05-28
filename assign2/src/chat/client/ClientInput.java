@@ -82,10 +82,11 @@ public final class ClientInput implements Runnable {
 
         return switch (command) {
             case "help" -> ClientCommand.local(helpText());
+            case "register" -> registerCommand(tail);
             case "login" -> loginCommand(tail);
             case "resume", "token" -> resumeCommand(tail);
             case "list" -> noTail("LIST", tail, "usage: /list");
-            case "create" -> requiredTail("CREATE", tail, "usage: /create <room>");
+            case "create" -> requiredTail("CREATE", tail, "usage: /create <room> [AI <prompt>]");
             case "create_ai" -> createAICommand(tail);
             case "join" -> requiredTail("JOIN", tail, "usage: /join <room>");
             case "msg" -> requiredTail("MSG", tail, "usage: /msg <text>");
@@ -95,6 +96,14 @@ public final class ClientInput implements Runnable {
             case "quit" -> quitCommand(tail);
             default -> ClientCommand.local("[client] unknown command /" + command + ". Type /help.");
         };
+    }
+
+    private static ClientCommand registerCommand(String tail) {
+        String[] args = tail.split("\\s+", 2);
+        if (tail.isBlank() || args.length != 2 || args[1].isBlank()) {
+            return ClientCommand.local("usage: /register <username> <password>");
+        }
+        return ClientCommand.send("REGISTER " + args[0] + " " + args[1]);
     }
 
     private static ClientCommand loginCommand(String tail) {
@@ -111,12 +120,25 @@ public final class ClientInput implements Runnable {
     }
 
     private static ClientCommand createAICommand(String tail) {
-        // Format: /create_ai <roomName> <prompt>
-        String[] args = tail.split("\\s+", 2);
-        if (tail.isBlank() || args.length < 2 || args[1].isBlank()) {
-            return ClientCommand.local("usage: /create_ai <room> <prompt>");
+        if (tail.isBlank()) {
+            return ClientCommand.local("usage: /create_ai <room> -- <prompt>");
         }
-        return ClientCommand.send("CREATE_AI " + args[0] + " " + args[1]);
+
+        int separator = tail.indexOf(" -- ");
+        if (separator >= 0) {
+            String roomName = tail.substring(0, separator).trim();
+            String prompt = tail.substring(separator + " -- ".length()).trim();
+            if (roomName.isEmpty() || prompt.isEmpty()) {
+                return ClientCommand.local("usage: /create_ai <room> -- <prompt>");
+            }
+            return ClientCommand.send("CREATE_AI " + roomName + " -- " + prompt);
+        }
+
+        String[] args = tail.split("\\s+", 2);
+        if (args.length < 2 || args[1].isBlank()) {
+            return ClientCommand.local("usage: /create_ai <room> -- <prompt>");
+        }
+        return ClientCommand.send("CREATE_AI " + tail);
     }
 
     private static ClientCommand requiredTail(String protocolCommand, String tail, String usage) {
@@ -137,11 +159,13 @@ public final class ClientInput implements Runnable {
     private static String helpText() {
         return """
                 commands:
+                  /register <username> <password>
                   /login <username> <password>
                   /resume <token>
                   /list
                   /create <room>
-                  /create_ai <room> <prompt>
+                  /create <room> AI <prompt>
+                  /create_ai <room> -- <prompt>
                   /join <room>
                   /msg <text>
                   /leave

@@ -53,6 +53,7 @@ public final class ClientReader implements Runnable {
         if ("PONG".equals(line)) return "[server] pong";
         if ("BYE".equals(line)) return "[server] bye";
         if (line.startsWith("ERR ")) return "[error] " + line.substring("ERR ".length());
+        if (line.startsWith("OK REGISTERED ")) return "[auth] registered " + line.substring("OK REGISTERED ".length());
         if (line.startsWith("OK TOKEN ")) return "[auth] logged in. token: " + line.substring("OK TOKEN ".length());
         if (line.startsWith("OK RESUMED ")) return "[auth] resumed as " + line.substring("OK RESUMED ".length());
         if (line.startsWith("OK USER ")) return "[auth] " + line.substring("OK USER ".length());

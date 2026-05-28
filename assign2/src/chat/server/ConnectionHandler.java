@@ -2,6 +2,7 @@ package chat.server;
 
 import chat.ai.OllamaClient;
 import chat.auth.PasswordHasher;
+import chat.auth.User;
 import chat.common.Frame;
 import chat.room.Room;
 import chat.room.RoomMessage;
@@ -28,12 +29,14 @@ import java.util.Objects;
  *
  * C2 protocol currently supported:
  *   PING
+ *   REGISTER <username> <password>
  *   LOGIN <username> <password>
  *   TOKEN <token>     (alias: RESUME <token>)
  *   WHOAMI
  *   LIST
  *   CREATE <roomName>
- *   CREATE_AI <roomName> <prompt>
+ *   CREATE <roomName> AI <prompt>
+ *   CREATE_AI <roomName> -- <prompt>
  *   JOIN <roomName>
  *   MSG <text>
  *   LEAVE
@@ -93,6 +96,9 @@ public final class ConnectionHandler implements Runnable {
                 case "PING" -> {
                     return send(frame, "PONG");
                 }
+                case "REGISTER" -> {
+                    return handleRegister(frame, parts);
+                }
                 case "LOGIN" -> {
                     return handleLogin(frame, parts);
                 }
@@ -113,7 +119,7 @@ public final class ConnectionHandler implements Runnable {
                 }
                 case "CREATE_AI" -> {
                     if (session == null) return send(frame, "ERR not authenticated");
-                    return handleCreateAI(frame, parts);
+                    return handleCreateAI(frame, tail(parts));
                 }
                 case "JOIN" -> {
                     if (session == null) return send(frame, "ERR not authenticated");
@@ -142,50 +148,94 @@ public final class ConnectionHandler implements Runnable {
     }
 
     private boolean handleList(Frame frame) throws IOException {
+        return send(frame, roomListLine());
+    }
+
+    private String roomListLine() {
         var names = state.rooms().names();
         String response = "ROOMS " + names.size();
         if (!names.isEmpty()) response += " " + String.join(" ", names);
-        return send(frame, response);
+        return response;
     }
 
-    private boolean handleCreate(Frame frame, String roomName) throws IOException {
-        if (roomName == null || roomName.isBlank()) {
-            return send(frame, "ERR usage CREATE <roomName>");
+    private boolean handleCreate(Frame frame, String tail) throws IOException {
+        if (tail == null || tail.isBlank()) {
+            return send(frame, "ERR usage CREATE <roomName> [AI <prompt>]");
+        }
+
+        AiCreate aiCreate = parseAiCreate(tail, true, false);
+        if (aiCreate != null) {
+            return createAiRoom(frame, aiCreate, "ERR usage CREATE <roomName> AI <prompt>");
         }
 
         try {
-            Room room = state.rooms().create(roomName);
+            Room room = state.rooms().create(tail);
             return send(frame, "OK CREATED " + room.name());
         } catch (IllegalArgumentException e) {
-            if (state.rooms().exists(roomName)) return send(frame, "ERR room exists");
+            if (state.rooms().exists(tail)) return send(frame, "ERR room exists");
             return send(frame, "ERR bad room name");
         }
     }
 
-    private boolean handleCreateAI(Frame frame, String[] parts) throws IOException {
-        // Format: CREATE_AI <roomName> <prompt>  (prompt may contain spaces)
-        if (parts.length < 3 || parts[2] == null || parts[2].isBlank()) {
-            return send(frame, "ERR usage CREATE_AI <roomName> <prompt>");
+    private boolean handleCreateAI(Frame frame, String tail) throws IOException {
+        AiCreate aiCreate = parseAiCreate(tail, false, true);
+        if (aiCreate == null) {
+            return send(frame, "ERR usage CREATE_AI <roomName> -- <prompt>");
         }
+        return createAiRoom(frame, aiCreate, "ERR usage CREATE_AI <roomName> -- <prompt>");
+    }
 
-        // parts[0]="CREATE_AI", parts[1]="roomName", parts[2]="the rest is prompt"
-        // But we split with limit 3, so check parts[1] for room name
-        String roomName = parts[1];
-        String prompt = parts[2];
-
+    private boolean createAiRoom(Frame frame, AiCreate aiCreate, String usage) throws IOException {
         OllamaClient ollama = state.ollamaClient();
         if (ollama == null) {
             return send(frame, "ERR AI rooms not available (Ollama not configured)");
         }
 
         try {
-            state.rooms().createAI(roomName, prompt, ollama);
-            return send(frame, "OK CREATED_AI " + Room.normalizeName(roomName));
+            state.rooms().createAI(aiCreate.roomName(), aiCreate.prompt(), ollama);
+            return send(frame, "OK CREATED_AI " + Room.normalizeName(aiCreate.roomName()));
         } catch (IllegalArgumentException e) {
-            if (state.rooms().exists(roomName)) return send(frame, "ERR room exists");
+            if (aiCreate.roomName().isBlank() || aiCreate.prompt().isBlank()) return send(frame, usage);
+            if (state.rooms().exists(aiCreate.roomName())) return send(frame, "ERR room exists");
             return send(frame, "ERR bad room name");
         }
     }
+
+    private static AiCreate parseAiCreate(String tail, boolean allowBriefMarker, boolean allowLegacyOneWordRoom) {
+        if (tail == null || tail.isBlank()) return null;
+
+        int explicitSeparator = tail.indexOf(" -- ");
+        if (explicitSeparator >= 0) {
+            return aiCreateFromParts(
+                    tail.substring(0, explicitSeparator),
+                    tail.substring(explicitSeparator + " -- ".length()));
+        }
+
+        if (allowBriefMarker) {
+            int marker = tail.lastIndexOf(" AI ");
+            if (marker >= 0) {
+                return aiCreateFromParts(
+                        tail.substring(0, marker),
+                        tail.substring(marker + " AI ".length()));
+            }
+        }
+
+        if (allowLegacyOneWordRoom) {
+            String[] parts = tail.split("\\s+", 2);
+            if (parts.length == 2) return aiCreateFromParts(parts[0], parts[1]);
+        }
+
+        return null;
+    }
+
+    private static AiCreate aiCreateFromParts(String roomName, String prompt) {
+        String room = roomName == null ? "" : roomName.trim();
+        String aiPrompt = prompt == null ? "" : prompt.trim();
+        if (room.isEmpty() || aiPrompt.isEmpty()) return null;
+        return new AiCreate(room, aiPrompt);
+    }
+
+    private record AiCreate(String roomName, String prompt) {}
 
     private boolean handleJoin(Frame frame, String roomName) throws IOException {
         if (roomName == null || roomName.isBlank()) {
@@ -237,6 +287,29 @@ public final class ConnectionHandler implements Runnable {
         return send(frame, "LEFT " + previousRoom);
     }
 
+    private boolean handleRegister(Frame frame, String[] parts) throws IOException {
+        if (parts.length != 3) {
+            return send(frame, "ERR usage REGISTER <username> <password>");
+        }
+        if (session != null) {
+            return send(frame, "ERR already authenticated");
+        }
+
+        String username = parts[1];
+        char[] password = parts[2].toCharArray();
+        try {
+            boolean created = state.register(username, password);
+            if (!created) return send(frame, "ERR user exists");
+            return send(frame, "OK REGISTERED " + User.normalizeUsername(username));
+        } catch (IllegalArgumentException e) {
+            return send(frame, "ERR bad registration");
+        } catch (IOException e) {
+            return send(frame, "ERR registration failed");
+        } finally {
+            PasswordHasher.clear(password);
+        }
+    }
+
     private boolean handleLogin(Frame frame, String[] parts) throws IOException {
         if (parts.length != 3) {
             return send(frame, "ERR usage LOGIN <username> <password>");
@@ -254,7 +327,8 @@ public final class ConnectionHandler implements Runnable {
             }
             session = created;
             startWriter(created, frame);
-            return send(frame, "OK TOKEN " + created.tokenValue());
+            if (!send(frame, "OK TOKEN " + created.tokenValue())) return false;
+            return send(frame, roomListLine());
         } finally {
             PasswordHasher.clear(password);
         }
