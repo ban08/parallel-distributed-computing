@@ -3,7 +3,6 @@ package chat.session;
 import chat.auth.User;
 import chat.concurrent.LockedMap;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -15,27 +14,14 @@ import java.util.Objects;
  * a token and recover its previous Session without sending the password again.
  */
 public final class SessionRegistry {
-    public static final Duration DEFAULT_TOKEN_TTL = Duration.ofHours(24);
-
     private final LockedMap<String, Session> byToken = new LockedMap<>();
 
-    /** Creates a session with default queue capacity and default token TTL. */
+    /** Creates and registers a session. */
     public Session create(User user) {
-        return create(user, Session.DEFAULT_OUTBOUND_CAPACITY, DEFAULT_TOKEN_TTL);
-    }
-
-    /**
-     * Creates and registers a new session.
-     *
-     * Token collisions are extremely unlikely, but the loop makes the operation
-     * correct even if a collision ever happens.
-     */
-    public Session create(User user, int outboundCapacity, Duration tokenTtl) {
         Objects.requireNonNull(user, "user");
-        Objects.requireNonNull(tokenTtl, "tokenTtl");
 
         while (true) {
-            Session session = new Session(user, outboundCapacity, tokenTtl);
+            Session session = new Session(user);
             Session existing = byToken.putIfAbsent(session.tokenValue(), session);
             // Collision is cryptographically improbable, but retrying makes the
             // registry correct without relying on probability for uniqueness.
@@ -87,10 +73,6 @@ public final class SessionRegistry {
             }
         }
         return removed;
-    }
-
-    public int size() {
-        return byToken.size();
     }
 
     private static String normalizeToken(String tokenValue) {

@@ -1,6 +1,5 @@
 package chat.room;
 
-import java.time.Clock;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -13,7 +12,7 @@ import java.util.regex.Pattern;
 /**
  * One chat room timeline.
  *
- * The room lock protects subscribers, history, and sequence allocation. Socket
+ * The room lock protects subscribers and history. Socket
  * writes are never performed here. Broadcasts only make non-blocking queue
  * offers while holding the lock, which preserves room order without letting a
  * slow client stall room progress.
@@ -24,37 +23,21 @@ public class Room {
 
     private final String name;
     private final RoomKind kind;
-    private final int historyLimit;
-    private final Clock clock;
     private final ReentrantLock lock = new ReentrantLock();
     private final Set<RoomSubscriber> subscribers = new HashSet<>();
-    private final ArrayDeque<RoomMessage> history;
-    /** Next sequence allocated to a newly appended timeline entry. */
-    private long nextSeq = 1L;
+    private final ArrayDeque<RoomMessage> history = new ArrayDeque<>(DEFAULT_HISTORY_LIMIT);
 
     public Room(String name) {
         this(name, RoomKind.NORMAL);
     }
 
-    public Room(String name, RoomKind kind) {
-        this(name, kind, DEFAULT_HISTORY_LIMIT, Clock.systemUTC());
-    }
-
-    public Room(String name, RoomKind kind, int historyLimit, Clock clock) {
+    protected Room(String name, RoomKind kind) {
         this.name = normalizeName(name);
         this.kind = Objects.requireNonNull(kind, "kind");
-        if (historyLimit <= 0) throw new IllegalArgumentException("historyLimit must be positive");
-        this.historyLimit = historyLimit;
-        this.clock = Objects.requireNonNull(clock, "clock");
-        this.history = new ArrayDeque<>(historyLimit);
     }
 
     public String name() {
         return name;
-    }
-
-    public int historyLimit() {
-        return historyLimit;
     }
 
     /** Returns the display name for room listings (AI rooms get an [AI] suffix). */
@@ -113,22 +96,11 @@ public class Room {
         return message;
     }
 
-    /** Returns up to maxCount recent retained messages in chronological order. */
-    public List<RoomMessage> recentHistory(int maxCount) {
-        if (maxCount < 0) throw new IllegalArgumentException("maxCount cannot be negative");
+    /** Returns the retained bounded history in chronological order. */
+    protected List<RoomMessage> recentHistory() {
         lock.lock();
         try {
-            int size = history.size();
-            int take = Math.min(size, maxCount);
-            if (take == 0) return List.of();
-
-            // Iterate backwards to grab only the tail entries
-            RoomMessage[] tail = new RoomMessage[take];
-            var it = history.descendingIterator();
-            for (int i = take - 1; i >= 0 && it.hasNext(); i--) {
-                tail[i] = it.next();
-            }
-            return List.of(tail);
+            return List.copyOf(history);
         } finally {
             lock.unlock();
         }
@@ -159,9 +131,9 @@ public class Room {
     }
 
     private RoomMessage appendMessage(String author, String text, boolean system) {
-        RoomMessage message = new RoomMessage(nextSeq++, author, clock.millis(), text, system);
+        RoomMessage message = new RoomMessage(author, System.currentTimeMillis(), text, system);
         history.addLast(message);
-        while (history.size() > historyLimit) history.removeFirst();
+        while (history.size() > DEFAULT_HISTORY_LIMIT) history.removeFirst();
         return message;
     }
 

@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
  */
 public record Token(String value, Instant issuedAt, Instant expiresAt) {
     private static final int TOKEN_BYTES = 32;
+    private static final Duration TTL = Duration.ofHours(24);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Pattern TOKEN_VALUE = Pattern.compile("[A-Za-z0-9_-]{32,}");
@@ -32,18 +33,13 @@ public record Token(String value, Instant issuedAt, Instant expiresAt) {
         }
     }
 
-    /** Issues a token with the supplied TTL. */
-    public static Token issue(Duration ttl) {
-        Objects.requireNonNull(ttl, "ttl");
-        if (ttl.isZero() || ttl.isNegative()) {
-            throw new IllegalArgumentException("ttl must be positive");
-        }
-
+    /** Issues a token with the default 24 hour TTL. */
+    public static Token issue() {
         byte[] bytes = new byte[TOKEN_BYTES];
         // 32 random bytes give 256 bits of entropy before Base64 encoding.
         RANDOM.nextBytes(bytes);
         Instant now = Instant.now();
-        return new Token(ENCODER.encodeToString(bytes), now, now.plus(ttl));
+        return new Token(ENCODER.encodeToString(bytes), now, now.plus(TTL));
     }
 
     public boolean isExpired() {

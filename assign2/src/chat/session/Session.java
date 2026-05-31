@@ -5,7 +5,6 @@ import chat.concurrent.BoundedQueue;
 import chat.room.Room;
 import chat.room.RoomSubscriber;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
@@ -23,7 +22,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * transport attaches: reconnect resumes live delivery without replay.
  */
 public final class Session implements RoomSubscriber, AutoCloseable {
-    public static final int DEFAULT_OUTBOUND_CAPACITY = 256;
+    private static final int OUTBOUND_CAPACITY = 256;
 
     private final User user;
     private final Token token;
@@ -36,14 +35,10 @@ public final class Session implements RoomSubscriber, AutoCloseable {
     private Runnable connectionCloser;
     private String currentRoomName;
 
-    Session(User user, int outboundCapacity, Duration tokenTtl) {
-        this(user, outboundCapacity, Token.issue(tokenTtl));
-    }
-
-    private Session(User user, int outboundCapacity, Token token) {
+    Session(User user) {
         this.user = Objects.requireNonNull(user, "user");
-        this.token = Objects.requireNonNull(token, "token");
-        this.outbound = new BoundedQueue<>(outboundCapacity);
+        this.token = Token.issue();
+        this.outbound = new BoundedQueue<>(OUTBOUND_CAPACITY);
     }
 
     @Override

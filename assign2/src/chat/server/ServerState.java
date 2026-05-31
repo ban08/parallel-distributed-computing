@@ -39,11 +39,6 @@ public final class ServerState {
         this.ollamaClient = Objects.requireNonNull(ollamaClient, "ollamaClient");
     }
 
-    /** Loads users from disk and creates empty session registry. */
-    public static ServerState load(Path usersPath) throws IOException {
-        return load(usersPath, null, null);
-    }
-
     /**
      * Loads users from disk and creates the Ollama client.
      *
@@ -68,10 +63,6 @@ public final class ServerState {
 
     public UserRegistry users() {
         return users;
-    }
-
-    public SessionRegistry sessions() {
-        return sessions;
     }
 
     public RoomRegistry rooms() {

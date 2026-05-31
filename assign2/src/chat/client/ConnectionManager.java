@@ -26,18 +26,13 @@ public final class ConnectionManager implements Runnable {
     private Frame currentFrame;
 
     public ConnectionManager(String host, int port, ClientState state, PrintStream out, PrintStream err) {
-        this(host, port, state, out, err, new ReconnectBackoff());
-    }
-
-    ConnectionManager(String host, int port, ClientState state, PrintStream out, PrintStream err,
-                      ReconnectBackoff backoff) {
         this.host = Objects.requireNonNull(host, "host");
         if (port <= 0 || port > 65535) throw new IllegalArgumentException("port out of range");
         this.port = port;
         this.state = Objects.requireNonNull(state, "state");
         this.out = Objects.requireNonNull(out, "out");
         this.err = Objects.requireNonNull(err, "err");
-        this.backoff = Objects.requireNonNull(backoff, "backoff");
+        this.backoff = new ReconnectBackoff();
     }
 
     public Thread start() {

@@ -40,7 +40,7 @@ public final class ChatServer {
         }
     }
 
-    public static void serve(int port, ServerState state) throws IOException {
+    private static void serve(int port, ServerState state) throws IOException {
         try (ServerSocket server = new ServerSocket(port)) {
             System.out.println("[server] listening on port " + server.getLocalPort());
             System.out.println("[server] users file: " + state.usersPath());

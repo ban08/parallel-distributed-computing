@@ -130,7 +130,7 @@ public final class OllamaClient {
 
     // ── JSON string encoding ───────────────────────────────────────────
 
-    static String jsonString(String value) {
+    private static String jsonString(String value) {
         if (value == null) return "null";
         StringBuilder sb = new StringBuilder(value.length() + 8);
         sb.append('"');
@@ -164,7 +164,7 @@ public final class OllamaClient {
     // handles escaped quotes, unicode escapes, nested objects, arrays,
     // numbers, booleans, and nulls.
 
-    static String extractContent(String json) throws IOException {
+    private static String extractContent(String json) throws IOException {
         try {
             JsonParser parser = new JsonParser(json);
             return parser.extractMessageContent();
@@ -178,7 +178,7 @@ public final class OllamaClient {
      * at {@code $.message.content} but correctly skips over arbitrary JSON
      * structures so it is not tripped by escaped characters or nesting.
      */
-    static final class JsonParser {
+    private static final class JsonParser {
         private final String src;
         private int pos;
 

@@ -130,7 +130,7 @@ public final class AIRoom extends Room {
     private List<OllamaClient.ChatMessage> buildContext() {
         // The assignment requests whole context. Room history is itself bounded,
         // so forwarding its complete retained non-system suffix is safe.
-        List<RoomMessage> recent = recentHistory(historyLimit());
+        List<RoomMessage> recent = recentHistory();
 
         List<OllamaClient.ChatMessage> context = new ArrayList<>(recent.size());
         for (RoomMessage msg : recent) {

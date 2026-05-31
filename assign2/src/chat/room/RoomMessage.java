@@ -4,18 +4,14 @@ import java.util.Objects;
 
 /**
  * Immutable room timeline entry.
- *
- * Sequence numbers are monotonic within a room and start at 1.
  */
 public record RoomMessage(
-        long seq,
         String author,
         long epochMillis,
         String text,
         boolean system
 ) {
     public RoomMessage {
-        if (seq <= 0L) throw new IllegalArgumentException("seq must be positive");
         author = cleanAuthor(author, system);
         text = cleanText(text);
     }
