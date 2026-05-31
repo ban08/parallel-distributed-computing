@@ -15,11 +15,7 @@ public final class RoomRegistry {
     private final LockedMap<String, Room> rooms = new LockedMap<>();
 
     public Room create(String name) {
-        return create(name, RoomKind.NORMAL);
-    }
-
-    public Room create(String name, RoomKind kind) {
-        return register(new Room(name, kind));
+        return register(new Room(name));
     }
 
     /**
@@ -31,21 +27,18 @@ public final class RoomRegistry {
         Objects.requireNonNull(systemPrompt, "systemPrompt");
         Objects.requireNonNull(ollama, "ollama");
         AIRoom aiRoom = new AIRoom(name, systemPrompt, ollama);
-        register(aiRoom);
-        return aiRoom;
+        try {
+            register(aiRoom);
+            return aiRoom;
+        } catch (RuntimeException e) {
+            // AIRoom starts its worker in the constructor. If registration loses
+            // a duplicate-name race, stop that otherwise unreachable worker.
+            aiRoom.shutdown();
+            throw e;
+        }
     }
 
-    public Room getOrCreateNormal(String name) {
-        String normalized = Room.normalizeName(name);
-        Room existing = rooms.get(normalized);
-        if (existing != null) return existing;
-
-        Room created = new Room(normalized, RoomKind.NORMAL);
-        Room previous = rooms.putIfAbsent(normalized, created);
-        return previous == null ? created : previous;
-    }
-
-    public Room register(Room room) {
+    private Room register(Room room) {
         Objects.requireNonNull(room, "room");
         Room previous = rooms.putIfAbsent(room.name(), room);
         if (previous != null) {
@@ -66,10 +59,6 @@ public final class RoomRegistry {
         }
     }
 
-    public int size() {
-        return rooms.size();
-    }
-
     /** Returns room listing entries (AI rooms have an [AI] suffix). */
     public List<String> names() {
         Map<String, Room> copy = rooms.snapshot();
@@ -81,11 +70,4 @@ public final class RoomRegistry {
         return entries;
     }
 
-    public List<Room> snapshot() {
-        Map<String, Room> copy = rooms.snapshot();
-        List<Room> values = new ArrayList<>(copy.values());
-        values.sort(Comparator.comparing(Room::name));
-        return values;
-    }
 }
-

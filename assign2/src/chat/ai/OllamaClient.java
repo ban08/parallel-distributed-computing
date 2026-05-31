@@ -16,13 +16,13 @@ import java.util.Objects;
  *
  * Calls POST /api/chat with {@code stream: false} and parses the JSON response
  * with a hand-written recursive-descent parser that correctly handles escaped
- * quotes, unicode escapes, and nested structures.
+ * quotes, unicode escapes, and nested structures. Keeping this adapter inside
+ * Java SE avoids adding a JSON or HTTP dependency to the assignment.
  */
 public final class OllamaClient {
     private static final int CONNECT_TIMEOUT_MS = 5_000;
     private static final int READ_TIMEOUT_MS = 120_000; // LLMs can be slow
     private static final int MAX_GENERATE_TOKENS = 512;  // cap reply length
-    private static final int MAX_MSG_CONTENT_CHARS = 500; // truncate long history entries
 
     private final String baseUrl;
     private final String model;
@@ -56,6 +56,8 @@ public final class OllamaClient {
     private String buildRequestJson(String systemPrompt, List<ChatMessage> messages) {
         StringBuilder sb = new StringBuilder(256 + messages.size() * 200);
         sb.append("{\"model\":").append(jsonString(model));
+        // Non-streaming mode gives one complete JSON object, which keeps the
+        // small response parser and room worker lifecycle straightforward.
         sb.append(",\"stream\":false");
         sb.append(",\"options\":{\"num_predict\":").append(MAX_GENERATE_TOKENS).append('}');
         sb.append(",\"messages\":[");
@@ -67,7 +69,7 @@ public final class OllamaClient {
         }
         for (ChatMessage m : messages) {
             if (!first) sb.append(',');
-            sb.append(chatMessageJson(m.role(), truncate(m.content())));
+            sb.append(chatMessageJson(m.role(), m.content()));
             first = false;
         }
         sb.append("]}");
@@ -76,11 +78,6 @@ public final class OllamaClient {
 
     private static String chatMessageJson(String role, String content) {
         return "{\"role\":" + jsonString(role) + ",\"content\":" + jsonString(content) + "}";
-    }
-
-    private static String truncate(String text) {
-        if (text.length() <= MAX_MSG_CONTENT_CHARS) return text;
-        return text.substring(0, MAX_MSG_CONTENT_CHARS) + "...";
     }
 
     // ── HTTP transport ─────────────────────────────────────────────────
@@ -96,6 +93,8 @@ public final class OllamaClient {
             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
 
             byte[] payload = body.getBytes(StandardCharsets.UTF_8);
+            // Fixed length lets HttpURLConnection send an ordinary request body
+            // without chunked transfer encoding.
             conn.setFixedLengthStreamingMode(payload.length);
             try (OutputStream out = conn.getOutputStream()) {
                 out.write(payload);
@@ -103,10 +102,12 @@ public final class OllamaClient {
 
             int status = conn.getResponseCode();
             if (status != 200) {
-                String errBody = readStream(conn.getErrorStream() != null
-                        ? new BufferedReader(new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))
-                        : null);
-                throw new IOException("Ollama HTTP " + status + ": " + errBody);
+                var errorStream = conn.getErrorStream();
+                try (BufferedReader errorReader = errorStream == null
+                        ? null
+                        : new BufferedReader(new InputStreamReader(errorStream, StandardCharsets.UTF_8))) {
+                    throw new IOException("Ollama HTTP " + status + ": " + readStream(errorReader));
+                }
             }
 
             try (BufferedReader in = new BufferedReader(
@@ -190,20 +191,21 @@ public final class OllamaClient {
             skipWhitespace();
             expect('{');
             String content = null;
+            boolean first = true;
             while (true) {
                 skipWhitespace();
                 if (peek() == '}') { pos++; break; }
-                if (content != null || peek() == ',') {
-                    if (peek() == ',') pos++;
-                    skipWhitespace();
-                }
+                if (!first) { expect(','); skipWhitespace(); }
+                first = false;
                 String key = readString();
                 skipWhitespace();
                 expect(':');
                 skipWhitespace();
                 if ("message".equals(key)) {
+                    // Ollama replies place assistant text at $.message.content.
                     content = parseMessageObject();
                 } else {
+                    // Ignore model metadata while still validating its JSON shape.
                     skipValue();
                 }
             }
@@ -257,11 +259,16 @@ public final class OllamaClient {
                         case 't'  -> sb.append('\t');
                         case 'u'  -> {
                             if (pos + 4 > src.length()) throw new ParseException("incomplete unicode escape");
-                            int cp = Integer.parseInt(src.substring(pos, pos + 4), 16);
+                            int cp;
+                            try {
+                                cp = Integer.parseInt(src.substring(pos, pos + 4), 16);
+                            } catch (NumberFormatException e) {
+                                throw new ParseException("invalid unicode escape");
+                            }
                             sb.append((char) cp);
                             pos += 4;
                         }
-                        default -> { sb.append('\\'); sb.append(esc); }
+                        default -> throw new ParseException("invalid escape '\\" + esc + "'");
                     }
                 } else {
                     sb.append(c);

@@ -3,15 +3,11 @@ package chat.session;
 import chat.auth.User;
 import chat.concurrent.BoundedQueue;
 import chat.room.Room;
-import chat.room.RoomMessage;
 import chat.room.RoomSubscriber;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -19,50 +15,40 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * A Session owns a secure token and a bounded outbound queue. Server code should
  * enqueue all outgoing frames here and let exactly one writer thread consume
- * takeOutbound()/pollOutbound() and write to the TCP connection.
+ * takeOutbound() and write to the TCP connection.
+ *
+ * The logical session deliberately outlives any one TCP connection. Its token,
+ * current room remains available while a broken transport is discarded and
+ * replaced during resume. Pending output is deliberately discarded when a new
+ * transport attaches: reconnect resumes live delivery without replay.
  */
 public final class Session implements RoomSubscriber, AutoCloseable {
     public static final int DEFAULT_OUTBOUND_CAPACITY = 256;
 
     private final User user;
     private final Token token;
-    private final BoundedQueue<OutboundFrame> outbound;
-    private final Map<String, Long> lastSeenSeqByRoom = new HashMap<>();
+    private final BoundedQueue<String> outbound;
     private final ReentrantLock stateLock = new ReentrantLock();
     private boolean closed;
     private long connectionGeneration;
     private Thread writerThread;
+    /** Closes the currently attached Frame/socket without closing the session. */
+    private Runnable connectionCloser;
     private String currentRoomName;
 
-    public Session(User user) {
-        this(user, DEFAULT_OUTBOUND_CAPACITY, Token.issue());
-    }
-
-    public Session(User user, int outboundCapacity) {
-        this(user, outboundCapacity, Token.issue());
-    }
-
-    public Session(User user, int outboundCapacity, Duration tokenTtl) {
+    Session(User user, int outboundCapacity, Duration tokenTtl) {
         this(user, outboundCapacity, Token.issue(tokenTtl));
     }
 
-    public Session(User user, int outboundCapacity, Token token) {
+    private Session(User user, int outboundCapacity, Token token) {
         this.user = Objects.requireNonNull(user, "user");
         this.token = Objects.requireNonNull(token, "token");
         this.outbound = new BoundedQueue<>(outboundCapacity);
     }
 
-    public User user() {
-        return user;
-    }
-
     @Override
     public String username() {
         return user.username();
-    }
-
-    public Token token() {
-        return token;
     }
 
     public String tokenValue() {
@@ -76,11 +62,15 @@ public final class Session implements RoomSubscriber, AutoCloseable {
     /**
      * Marks a new TCP connection as the active one for this session.
      *
-     * Any previous writer is interrupted so it cannot keep consuming outbound
-     * frames after a reconnect attaches a newer socket.
+     * Any previous transport is closed and its writer interrupted so it cannot
+     * keep issuing commands or consuming outbound frames after a reconnect
+     * attaches a newer socket.
      */
-    public long attachConnection() {
+    public long attachConnection(Runnable closer) {
+        Objects.requireNonNull(closer, "closer");
+
         Thread previousWriter;
+        Runnable previousCloser;
         long generation;
 
         stateLock.lock();
@@ -88,11 +78,15 @@ public final class Session implements RoomSubscriber, AutoCloseable {
             if (closed) throw new IllegalStateException("session is closed");
             generation = ++connectionGeneration;
             previousWriter = writerThread;
+            previousCloser = connectionCloser;
             writerThread = null;
+            connectionCloser = closer;
+            outbound.drainTo(new ArrayList<>());
         } finally {
             stateLock.unlock();
         }
 
+        closeConnection(previousCloser);
         if (previousWriter != null) previousWriter.interrupt();
         return generation;
     }
@@ -126,12 +120,37 @@ public final class Session implements RoomSubscriber, AutoCloseable {
         stateLock.lock();
         try {
             if (generation == connectionGeneration) {
+                // Advance again so no stale handler can continue routing input
+                // after the writer for this transport exits.
                 connectionGeneration++;
                 writerThread = null;
+                connectionCloser = null;
             }
         } finally {
             stateLock.unlock();
         }
+    }
+
+    @Override
+    public void disconnect() {
+        Thread writer;
+        Runnable closer;
+        stateLock.lock();
+        try {
+            if (closed || connectionCloser == null) return;
+            // Invalidate reader and writer ownership but keep room/token state
+            // intact so ConnectionManager can resume this logical session.
+            connectionGeneration++;
+            writer = writerThread;
+            closer = connectionCloser;
+            writerThread = null;
+            connectionCloser = null;
+        } finally {
+            stateLock.unlock();
+        }
+
+        closeConnection(closer);
+        if (writer != null) writer.interrupt();
     }
 
     public String currentRoomName() {
@@ -143,17 +162,12 @@ public final class Session implements RoomSubscriber, AutoCloseable {
         }
     }
 
-    public boolean inRoom() {
-        return currentRoomName() != null;
-    }
-
     public void enterRoom(String roomName) {
         String normalized = Room.normalizeName(roomName);
         stateLock.lock();
         try {
             if (closed) throw new IllegalStateException("session is closed");
             currentRoomName = normalized;
-            lastSeenSeqByRoom.putIfAbsent(normalized, 0L);
         } finally {
             stateLock.unlock();
         }
@@ -170,96 +184,32 @@ public final class Session implements RoomSubscriber, AutoCloseable {
         }
     }
 
-    public long lastSeenSeq(String roomName) {
-        String normalized = Room.normalizeName(roomName);
-        stateLock.lock();
-        try {
-            return lastSeenSeqByRoom.getOrDefault(normalized, 0L);
-        } finally {
-            stateLock.unlock();
-        }
-    }
-
-    public void markSeen(String roomName, long seq) {
-        if (seq < 0L) throw new IllegalArgumentException("seq cannot be negative");
-        String normalized = Room.normalizeName(roomName);
-        stateLock.lock();
-        try {
-            long current = lastSeenSeqByRoom.getOrDefault(normalized, 0L);
-            if (seq > current) lastSeenSeqByRoom.put(normalized, seq);
-        } finally {
-            stateLock.unlock();
-        }
-    }
-
     /**
      * Enqueues a frame without blocking. Returns false if the session is closed
      * or the bounded queue is full.
      */
     @Override
     public boolean enqueue(String frame) {
-        OutboundFrame outboundFrame = OutboundFrame.plain(frame);
+        validateFrame(frame);
         stateLock.lock();
         try {
             if (closed) return false;
-            return outbound.offer(outboundFrame);
+            return outbound.offer(frame);
         } finally {
             stateLock.unlock();
         }
-    }
-
-    @Override
-    public boolean enqueueRoomMessage(String roomName, RoomMessage message) {
-        OutboundFrame outboundFrame = OutboundFrame.room(roomName, message);
-        stateLock.lock();
-        try {
-            if (closed) return false;
-            return outbound.offer(outboundFrame);
-        } finally {
-            stateLock.unlock();
-        }
-    }
-
-    /** Enqueues a frame, waiting for capacity. Mostly useful in tests/bootstrap. */
-    public void putOutbound(String frame) throws InterruptedException {
-        OutboundFrame outboundFrame = OutboundFrame.plain(frame);
-        stateLock.lock();
-        try {
-            if (closed) throw new IllegalStateException("session is closed");
-        } finally {
-            stateLock.unlock();
-        }
-        outbound.put(outboundFrame);
     }
 
     /** Takes the next outbound frame, blocking while none is available. */
     public String takeOutbound() throws InterruptedException {
-        return takeOutboundFrame().line();
-    }
-
-    public OutboundFrame takeOutboundFrame() throws InterruptedException {
         return outbound.take();
-    }
-
-    /** Polls the next outbound frame, returning null on timeout. */
-    public String pollOutbound(long timeout, TimeUnit unit) throws InterruptedException {
-        OutboundFrame frame = outbound.poll(timeout, unit);
-        return frame == null ? null : frame.line();
-    }
-
-    public int clearOutbound() {
-        return outbound.drainTo(new ArrayList<>());
     }
 
     public int outboundSize() {
         return outbound.size();
     }
 
-    public int outboundCapacity() {
-        return outbound.capacity();
-    }
-
-    public boolean isClosed() {
+    boolean isClosed() {
         stateLock.lock();
         try {
             return closed;
@@ -271,15 +221,31 @@ public final class Session implements RoomSubscriber, AutoCloseable {
     @Override
     public void close() {
         Thread writer;
+        Runnable closer;
         stateLock.lock();
         try {
+            if (closed) return;
             closed = true;
+            connectionGeneration++;
             writer = writerThread;
+            closer = connectionCloser;
             writerThread = null;
+            connectionCloser = null;
+            outbound.drainTo(new ArrayList<>());
         } finally {
             stateLock.unlock();
         }
+        closeConnection(closer);
         if (writer != null) writer.interrupt();
+    }
+
+    private static void closeConnection(Runnable closer) {
+        if (closer == null) return;
+        try {
+            closer.run();
+        } catch (RuntimeException ignored) {
+            // A transport close failure must not keep the session attached.
+        }
     }
 
     private static void validateFrame(String frame) {
@@ -289,28 +255,4 @@ public final class Session implements RoomSubscriber, AutoCloseable {
         }
     }
 
-    public record OutboundFrame(String line, String roomName, long seq) {
-        public OutboundFrame {
-            validateFrame(line);
-            if (roomName != null) {
-                roomName = Room.normalizeName(roomName);
-                if (seq <= 0L) throw new IllegalArgumentException("room frame seq must be positive");
-            } else if (seq != 0L) {
-                throw new IllegalArgumentException("plain frame seq must be zero");
-            }
-        }
-
-        public static OutboundFrame plain(String line) {
-            return new OutboundFrame(line, null, 0L);
-        }
-
-        public static OutboundFrame room(String roomName, RoomMessage message) {
-            Objects.requireNonNull(message, "message");
-            return new OutboundFrame(message.toFrame(), roomName, message.seq());
-        }
-
-        public boolean hasRoomSequence() {
-            return roomName != null;
-        }
-    }
 }

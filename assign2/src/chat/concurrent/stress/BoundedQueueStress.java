@@ -9,8 +9,8 @@ import chat.concurrent.BoundedQueue;
  * or duplicated. Hang ⇒ deadlock or lost wake-up (caught by external
  * timeout in the runner).
  *
- * No CountDownLatch / AtomicLong: producer threads are joined before
- * poison pills are inserted, so termination is deterministic.
+ * No CountDownLatch / AtomicLong: producers retry the same non-blocking offer
+ * used by room broadcasts, then are joined before poison pills are inserted.
  */
 public final class BoundedQueueStress {
 
@@ -27,11 +27,11 @@ public final class BoundedQueueStress {
         for (int p = 0; p < PRODUCERS; p++) {
             final int pid = p;
             producers[p] = Thread.ofVirtual().name("prod-" + p).start(() -> {
-                try {
-                    long base = (long) pid * PER_PRODUCER;
-                    for (int i = 0; i < PER_PRODUCER; i++) q.put(base + i);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
+                long base = (long) pid * PER_PRODUCER;
+                for (int i = 0; i < PER_PRODUCER; i++) {
+                    while (!q.offer(base + i)) {
+                        Thread.yield();
+                    }
                 }
             });
         }
@@ -56,7 +56,9 @@ public final class BoundedQueueStress {
         }
 
         for (Thread t : producers) t.join();
-        for (int i = 0; i < CONSUMERS; i++) q.put(POISON);
+        for (int i = 0; i < CONSUMERS; i++) {
+            while (!q.offer(POISON)) Thread.yield();
+        }
         for (Thread t : consumers) t.join();
 
         long total = 0;

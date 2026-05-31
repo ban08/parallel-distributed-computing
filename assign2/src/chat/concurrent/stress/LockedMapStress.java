@@ -12,7 +12,7 @@ import java.util.Random;
  * torn or stale read — should never happen with the LockedMap.
  *
  * No exceptions allowed (in particular no ConcurrentModificationException
- * from snapshot/forEach), and the final map must respect the invariant.
+ * from snapshot), and the final map must respect the invariant.
  */
 public final class LockedMapStress {
 
@@ -52,7 +52,7 @@ public final class LockedMapStress {
                 try {
                     while (System.currentTimeMillis() < deadline) {
                         int key = rnd.nextInt(KEY_SPACE);
-                        if (rnd.nextInt(2) == 0) map.put(key, (long) key * key);
+                        if (rnd.nextInt(2) == 0) map.putIfAbsent(key, (long) key * key);
                         else map.remove(key);
                     }
                 } catch (Throwable t) { failure[0] = t; }
@@ -65,7 +65,7 @@ public final class LockedMapStress {
             failure[0].printStackTrace();
             System.exit(1);
         }
-        map.forEach((k, v) -> {
+        map.snapshot().forEach((k, v) -> {
             if (v != (long) k * k) throw new AssertionError("final invariant violated k=" + k + " v=" + v);
         });
         System.out.println("PASS LockedMapStress: " + durationMs + " ms, final size=" + map.size());

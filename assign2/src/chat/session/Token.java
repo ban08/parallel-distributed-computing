@@ -7,10 +7,15 @@ import java.util.Base64;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-/** Secure session token. Value format is URL-safe Base64 without padding. */
+/**
+ * Secure session capability. Value format is URL-safe Base64 without padding.
+ *
+ * A token lets a reconnecting client recover server-side session state without
+ * caching or resending credentials. Tokens are random, validated, and bounded
+ * by an expiry instant.
+ */
 public record Token(String value, Instant issuedAt, Instant expiresAt) {
     private static final int TOKEN_BYTES = 32;
-    private static final Duration DEFAULT_TTL = Duration.ofHours(24);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Pattern TOKEN_VALUE = Pattern.compile("[A-Za-z0-9_-]{32,}");
@@ -27,11 +32,6 @@ public record Token(String value, Instant issuedAt, Instant expiresAt) {
         }
     }
 
-    /** Issues a token with the default TTL. */
-    public static Token issue() {
-        return issue(DEFAULT_TTL);
-    }
-
     /** Issues a token with the supplied TTL. */
     public static Token issue(Duration ttl) {
         Objects.requireNonNull(ttl, "ttl");
@@ -40,27 +40,14 @@ public record Token(String value, Instant issuedAt, Instant expiresAt) {
         }
 
         byte[] bytes = new byte[TOKEN_BYTES];
+        // 32 random bytes give 256 bits of entropy before Base64 encoding.
         RANDOM.nextBytes(bytes);
         Instant now = Instant.now();
         return new Token(ENCODER.encodeToString(bytes), now, now.plus(ttl));
     }
 
     public boolean isExpired() {
-        return isExpired(Instant.now());
+        return !Instant.now().isBefore(expiresAt);
     }
 
-    public boolean isExpired(Instant now) {
-        Objects.requireNonNull(now, "now");
-        return !now.isBefore(expiresAt);
-    }
-
-    public Duration remainingTtl() {
-        return remainingTtl(Instant.now());
-    }
-
-    public Duration remainingTtl(Instant now) {
-        Objects.requireNonNull(now, "now");
-        if (isExpired(now)) return Duration.ZERO;
-        return Duration.between(now, expiresAt);
-    }
 }

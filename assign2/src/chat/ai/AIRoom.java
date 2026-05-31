@@ -1,5 +1,6 @@
 package chat.ai;
 
+import chat.concurrent.BoundedQueue;
 import chat.room.Room;
 import chat.room.RoomKind;
 import chat.room.RoomMessage;
@@ -8,7 +9,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * AI-powered chat room backed by a local Ollama LLM.
@@ -25,19 +25,16 @@ import java.util.concurrent.locks.ReentrantLock;
  *       same history and produce duplicate or out-of-order Bot replies.</li>
  *   <li>Bot messages ({@code author == "Bot"}) <strong>never</strong>
  *       trigger new AI calls, preventing infinite response loops.</li>
- *   <li>Only the last {@value #CONTEXT_MESSAGE_LIMIT} non-system messages
- *       are sent to Ollama so token usage stays bounded.</li>
- *   <li>Consecutive Ollama errors trigger an exponential backoff; the room
- *       posts a single error notice and silently drops further requests
- *       until the backoff period expires, avoiding error spam.</li>
+ *   <li>Every non-system message still retained by the room's bounded
+ *       history is sent to Ollama, matching the assignment's whole-context
+ *       requirement while keeping memory usage bounded.</li>
+ *   <li>Ollama errors post a short system notice instead of stopping the room
+ *       worker.</li>
  * </ul>
  */
 public final class AIRoom extends Room {
     /** Special author name used for LLM replies. */
     public static final String BOT_AUTHOR = "Bot";
-
-    /** Maximum non-system messages included in the Ollama context window. */
-    static final int CONTEXT_MESSAGE_LIMIT = 15;
 
     /** Maximum characters of a single bot reply posted to the room. */
     private static final int MAX_REPLY_LENGTH = 4096;
@@ -45,39 +42,21 @@ public final class AIRoom extends Room {
     /** Maximum pending AI work items (prevents unbounded memory growth). */
     private static final int WORK_QUEUE_CAPACITY = 64;
 
-    /** Backoff parameters for consecutive Ollama errors. */
-    private static final long INITIAL_BACKOFF_MS = 5_000;
-    private static final long MAX_BACKOFF_MS = 120_000;
-
     private final String systemPrompt;
     private final OllamaClient ollama;
 
-    /*
-     * Sequential work queue.  A single virtual-thread worker drains this
-     * queue and invokes Ollama for each item.  The BoundedQueue from the
-     * concurrent package would work too, but since we only need simple
-     * offer/take semantics and the worker is always a single thread, a
-     * plain ArrayDeque + ReentrantLock + Condition is cleaner.
-     */
-    private final ReentrantLock workLock = new ReentrantLock();
-    private final java.util.concurrent.locks.Condition workAvailable = workLock.newCondition();
-    private final java.util.ArrayDeque<Runnable> workQueue = new java.util.ArrayDeque<>();
-    private int workQueueSize;
+    /** One shared queue implementation is enough for both session and AI work. */
+    private final BoundedQueue<Runnable> workQueue = new BoundedQueue<>(WORK_QUEUE_CAPACITY);
+    private final Thread worker;
     private volatile boolean shutdown;
-
-    /* Error backoff state — guarded by workLock (accessed only by worker). */
-    private int consecutiveErrors;
-    private long backoffUntilMillis;
 
     public AIRoom(String name, String systemPrompt, OllamaClient ollama) {
         super(name, RoomKind.AI);
         this.systemPrompt = Objects.requireNonNull(systemPrompt, "systemPrompt");
         this.ollama = Objects.requireNonNull(ollama, "ollama");
-        startWorker();
-    }
-
-    public String systemPrompt() {
-        return systemPrompt;
+        worker = Thread.ofVirtual()
+                .name("ai-room-worker-" + name())
+                .start(this::workerLoop);
     }
 
     // ── afterUserMessage hook ──────────────────────────────────────────
@@ -92,51 +71,30 @@ public final class AIRoom extends Room {
         // trigger another AI call.
         if (BOT_AUTHOR.equals(message.author())) return;
 
-        enqueueWork(() -> processAIRequest());
+        if (!enqueueWork(this::processAIRequest)) {
+            // Overload is visible to users instead of silently losing a Bot
+            // request that can never receive a reply.
+            postSystemMessage("Bot is overloaded; please try again later");
+        }
     }
 
     // ── sequential worker ──────────────────────────────────────────────
 
-    private void startWorker() {
-        Thread.ofVirtual()
-                .name("ai-room-worker-" + name())
-                .start(this::workerLoop);
-    }
-
     private void workerLoop() {
         while (!shutdown) {
-            Runnable task;
-            workLock.lock();
             try {
-                while (workQueueSize == 0 && !shutdown) {
-                    workAvailable.awaitUninterruptibly();
-                }
-                if (shutdown) return;
-                task = workQueue.removeFirst();
-                workQueueSize--;
-            } finally {
-                workLock.unlock();
-            }
-
-            try {
-                task.run();
+                workQueue.take().run();
+            } catch (InterruptedException e) {
+                if (!shutdown) Thread.currentThread().interrupt();
+                return;
             } catch (RuntimeException e) {
                 System.err.println("[ai-room " + name() + "] worker error: " + e.getMessage());
             }
         }
     }
 
-    private void enqueueWork(Runnable task) {
-        workLock.lock();
-        try {
-            if (shutdown) return;
-            if (workQueueSize >= WORK_QUEUE_CAPACITY) return; // drop if overloaded
-            workQueue.addLast(task);
-            workQueueSize++;
-            workAvailable.signal();
-        } finally {
-            workLock.unlock();
-        }
+    private boolean enqueueWork(Runnable task) {
+        return !shutdown && workQueue.offer(task);
     }
 
     /**
@@ -144,51 +102,38 @@ public final class AIRoom extends Room {
      * (currently rooms are permanent, but this is good hygiene).
      */
     public void shutdown() {
-        workLock.lock();
-        try {
-            shutdown = true;
-            workAvailable.signalAll();
-        } finally {
-            workLock.unlock();
-        }
+        shutdown = true;
+        worker.interrupt();
     }
 
     // ── AI processing ──────────────────────────────────────────────────
 
     private void processAIRequest() {
-        // Check error backoff
-        if (System.currentTimeMillis() < backoffUntilMillis) {
-            return; // silently skip — error notice was already posted
-        }
-
+        // Build context at execution time, not enqueue time, so each sequential
+        // request sees the newest retained room timeline.
         List<OllamaClient.ChatMessage> context = buildContext();
         if (context.isEmpty()) return;
 
         try {
             String reply = ollama.chat(systemPrompt, context);
-            consecutiveErrors = 0;
-            backoffUntilMillis = 0;
-
             if (reply == null || reply.isBlank()) return;
             reply = sanitizeReply(reply);
             if (reply.isEmpty()) return;
 
             postUserMessage(BOT_AUTHOR, reply);
         } catch (IOException e) {
-            handleOllamaError(e);
+            System.err.println("[ai-room " + name() + "] Ollama error: " + e.getMessage());
+            postSystemMessage("Bot is temporarily unavailable");
         }
     }
 
     private List<OllamaClient.ChatMessage> buildContext() {
-        // Fetch only a small tail of history.  We ask for a few extra to
-        // compensate for system messages that will be skipped, but we
-        // never pull the full 200-entry history buffer.
-        int fetch = CONTEXT_MESSAGE_LIMIT + 10; // headroom for system msgs
-        List<RoomMessage> recent = recentHistory(fetch);
+        // The assignment requests whole context. Room history is itself bounded,
+        // so forwarding its complete retained non-system suffix is safe.
+        List<RoomMessage> recent = recentHistory(historyLimit());
 
-        List<OllamaClient.ChatMessage> context = new ArrayList<>(CONTEXT_MESSAGE_LIMIT);
-        for (int i = recent.size() - 1; i >= 0 && context.size() < CONTEXT_MESSAGE_LIMIT; i--) {
-            RoomMessage msg = recent.get(i);
+        List<OllamaClient.ChatMessage> context = new ArrayList<>(recent.size());
+        for (RoomMessage msg : recent) {
             if (msg.system()) continue;
             boolean isBot = BOT_AUTHOR.equals(msg.author());
             context.add(new OllamaClient.ChatMessage(
@@ -196,28 +141,7 @@ public final class AIRoom extends Room {
                     isBot ? msg.text() : msg.author() + ": " + msg.text()));
         }
 
-        // Reverse so oldest is first (Ollama expects chronological order)
-        java.util.Collections.reverse(context);
         return context;
-    }
-
-    private void handleOllamaError(IOException e) {
-        consecutiveErrors++;
-        long backoff = Math.min(INITIAL_BACKOFF_MS * (1L << (consecutiveErrors - 1)), MAX_BACKOFF_MS);
-        backoffUntilMillis = System.currentTimeMillis() + backoff;
-
-        String notice = "Bot is temporarily unavailable (" + briefError(e) + ")";
-        System.err.println("[ai-room " + name() + "] Ollama error #" + consecutiveErrors
-                + ", backoff " + backoff + "ms: " + e.getMessage());
-
-        // Only post error notice on first failure or every 5th consecutive failure
-        if (consecutiveErrors == 1 || consecutiveErrors % 5 == 0) {
-            try {
-                postSystemMessage(notice);
-            } catch (RuntimeException ignored) {
-                // If posting fails too, there's nothing more we can do.
-            }
-        }
     }
 
     private static String sanitizeReply(String reply) {
@@ -228,12 +152,5 @@ public final class AIRoom extends Room {
             cleaned = cleaned.substring(0, MAX_REPLY_LENGTH) + "...";
         }
         return cleaned;
-    }
-
-    private static String briefError(IOException e) {
-        String msg = e.getMessage();
-        if (msg == null) return "unknown error";
-        if (msg.length() > 80) return msg.substring(0, 80) + "...";
-        return msg;
     }
 }

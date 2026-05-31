@@ -1,21 +1,24 @@
 package chat.server;
 
+import chat.auth.PasswordHasher;
 import chat.common.Frame;
+import chat.room.Room;
+import chat.session.Session;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 
 /** Manual integration test for C1/C2 over real TCP sockets. */
 public final class ConnectionHandlerManualTest {
     public static void main(String[] args) throws Exception {
         Path dir = Files.createTempDirectory("chat-server-test-");
         Path users = dir.resolve("users.txt");
+        writeUsers(users);
         ServerState state = ServerState.load(users);
-        if (!state.users().register("miguel", "password123".toCharArray())) {
-            throw new AssertionError("failed to register test user");
-        }
         try (ServerSocket server = new ServerSocket(0)) {
             int port = server.getLocalPort();
             Thread acceptOne = Thread.ofVirtual().start(() -> acceptAndHandle(server, state));
@@ -23,17 +26,8 @@ public final class ConnectionHandlerManualTest {
             String token;
             try (Socket client = new Socket("localhost", port); Frame frame = new Frame(client)) {
                 client.setSoTimeout(3000);
-                frame.writeLine("PING");
-                expect(frame.readLine(), "PONG");
-
                 frame.writeLine("NOPE something");
                 expect(frame.readLine(), "ERR unknown command");
-
-                frame.writeLine("REGISTER carol carol123");
-                expect(frame.readLine(), "OK REGISTERED carol");
-
-                frame.writeLine("REGISTER carol carol123");
-                expect(frame.readLine(), "ERR user exists");
 
                 frame.writeLine("LOGIN miguel password123");
                 String login = frame.readLine();
@@ -43,31 +37,52 @@ public final class ConnectionHandlerManualTest {
                 token = login.substring("OK TOKEN ".length());
                 expect(frame.readLine(), "ROOMS 0");
 
-                frame.writeLine("PING");
-                expect(frame.readLine(), "PONG");
-
-                frame.writeLine("WHOAMI");
-                expect(frame.readLine(), "OK USER miguel");
-
                 frame.writeLine("QUIT");
                 expect(frame.readLine(), "BYE");
             }
             acceptOne.join();
+            if (state.sessions().size() != 0) throw new AssertionError("QUIT should remove session");
+
+            Thread acceptRejectedResume = Thread.ofVirtual().start(() -> acceptAndHandle(server, state));
+            try (Socket client = new Socket("localhost", port); Frame frame = new Frame(client)) {
+                client.setSoTimeout(3000);
+                frame.writeLine("TOKEN " + token);
+                expect(frame.readLine(), "ERR invalid token");
+                frame.writeLine("QUIT");
+                expect(frame.readLine(), "BYE");
+            }
+            acceptRejectedResume.join();
+
+            String resumableToken;
+            Thread acceptInterrupted = Thread.ofVirtual().start(() -> acceptAndHandle(server, state));
+            Socket interrupted = new Socket("localhost", port);
+            try (Frame frame = new Frame(interrupted)) {
+                interrupted.setSoTimeout(3000);
+                resumableToken = login(frame, "miguel", "password123");
+                closeSocket(interrupted);
+            }
+            acceptInterrupted.join();
 
             Thread acceptResume = Thread.ofVirtual().start(() -> acceptAndHandle(server, state));
             try (Socket client = new Socket("localhost", port); Frame frame = new Frame(client)) {
                 client.setSoTimeout(3000);
-                frame.writeLine("TOKEN " + token);
+                frame.writeLine("TOKEN " + resumableToken);
                 expect(frame.readLine(), "OK RESUMED miguel");
 
-                frame.writeLine("PING");
-                expect(frame.readLine(), "PONG");
+                Thread acceptTakeover = Thread.ofVirtual().start(() -> acceptAndHandle(server, state));
+                try (Socket takeover = new Socket("localhost", port); Frame takeoverFrame = new Frame(takeover)) {
+                    takeover.setSoTimeout(3000);
+                    takeoverFrame.writeLine("TOKEN " + resumableToken);
+                    expect(takeoverFrame.readLine(), "OK RESUMED miguel");
+                    expectTransportClosed(frame);
 
-                frame.writeLine("WHOAMI");
-                expect(frame.readLine(), "OK USER miguel");
+                    takeoverFrame.writeLine("LIST");
+                    expect(takeoverFrame.readLine(), "ROOMS 0");
 
-                frame.writeLine("QUIT");
-                expect(frame.readLine(), "BYE");
+                    takeoverFrame.writeLine("QUIT");
+                    expect(takeoverFrame.readLine(), "BYE");
+                }
+                acceptTakeover.join();
             }
             acceptResume.join();
 
@@ -94,17 +109,17 @@ public final class ConnectionHandlerManualTest {
                 aliceFrame.writeLine("CREATE Library");
                 expect(aliceFrame.readLine(), "ERR room exists");
 
-                aliceFrame.writeLine("CREATE AI doodle AI summarize availability");
-                expect(aliceFrame.readLine(), "OK CREATED_AI AI doodle");
-
-                aliceFrame.writeLine("CREATE_AI Meeting Bot -- collect availability");
-                expect(aliceFrame.readLine(), "OK CREATED_AI Meeting Bot");
+                aliceFrame.writeLine("CREATE_AI doodle -- summarize AI availability");
+                expect(aliceFrame.readLine(), "OK CREATED_AI doodle");
 
                 aliceFrame.writeLine("CREATE_AI OneWord legacy prompt");
-                expect(aliceFrame.readLine(), "OK CREATED_AI OneWord");
+                expect(aliceFrame.readLine(), "ERR usage CREATE_AI <roomName> -- <prompt>");
+
+                aliceFrame.writeLine("CREATE Bad Room");
+                expect(aliceFrame.readLine(), "ERR bad room name");
 
                 aliceFrame.writeLine("LIST");
-                expect(aliceFrame.readLine(), "ROOMS 4 AI doodle[AI] Library Meeting Bot[AI] OneWord[AI]");
+                expect(aliceFrame.readLine(), "ROOMS 2 Library doodle[AI]");
 
                 aliceFrame.writeLine("JOIN Library");
                 expect(aliceFrame.readLine(), "JOINED Library");
@@ -134,9 +149,10 @@ public final class ConnectionHandlerManualTest {
                     aliceResumeFrame.writeLine("TOKEN " + aliceToken);
                     expect(aliceResumeFrame.readLine(), "OK RESUMED miguel");
                     expect(aliceResumeFrame.readLine(), "JOINED Library");
-                    expect(aliceResumeFrame.readLine(), "HIST 2");
-                    expectRoomMessage(aliceResumeFrame.readLine(), "bob", "missed one");
-                    expectRoomMessage(aliceResumeFrame.readLine(), "bob", "missed two");
+
+                    bobFrame.writeLine("MSG live after resume");
+                    expectRoomMessage(bobFrame.readLine(), "bob", "live after resume");
+                    expectRoomMessage(aliceResumeFrame.readLine(), "bob", "live after resume");
 
                     bobFrame.writeLine("LEAVE");
                     expect(bobFrame.readLine(), "LEFT Library");
@@ -145,6 +161,10 @@ public final class ConnectionHandlerManualTest {
                     bobFrame.writeLine("MSG after leave");
                     expect(bobFrame.readLine(), "ERR not in room");
 
+                    bobFrame.writeLine("JOIN AutoRoom");
+                    expect(bobFrame.readLine(), "ERR room not found");
+                    bobFrame.writeLine("CREATE AutoRoom");
+                    expect(bobFrame.readLine(), "OK CREATED AutoRoom");
                     bobFrame.writeLine("JOIN AutoRoom");
                     expect(bobFrame.readLine(), "JOINED AutoRoom");
                     expect(bobFrame.readLine(), "SYS bob entered the room");
@@ -158,6 +178,19 @@ public final class ConnectionHandlerManualTest {
             }
             acceptBob.join();
         }
+
+        Room expiryRoom = state.rooms().create("ExpiryRoom");
+        Session expiring = state.sessions().create(state.users().get("miguel"), 8, Duration.ofMillis(20));
+        expiring.enterRoom(expiryRoom.name());
+        expiryRoom.join(expiring);
+        Thread.sleep(40);
+        Session cleanupTrigger = state.login("miguel", "password123".toCharArray());
+        if (cleanupTrigger == null) throw new AssertionError("cleanup trigger login failed");
+        var expiryHistory = expiryRoom.recentHistory(10);
+        if (!"miguel left the room".equals(expiryHistory.get(expiryHistory.size() - 1).text())) {
+            throw new AssertionError("expired session remained in room");
+        }
+        state.logout(cleanupTrigger);
 
         System.out.println("PASS ConnectionHandlerManualTest");
     }
@@ -173,6 +206,30 @@ public final class ConnectionHandlerManualTest {
 
     private static void closeSocket(Socket socket) throws Exception {
         socket.close();
+    }
+
+    private static void expectTransportClosed(Frame frame) throws Exception {
+        try {
+            frame.writeLine("LIST");
+            String response = frame.readLine();
+            if (response != null) throw new AssertionError("stale transport still responded: " + response);
+        } catch (IOException expected) {
+            // expected path
+        }
+    }
+
+    private static void writeUsers(Path path) throws IOException {
+        PasswordHasher hasher = new PasswordHasher();
+        char[] miguelPassword = "password123".toCharArray();
+        char[] bobPassword = "bob123".toCharArray();
+        try {
+            Files.writeString(path,
+                    "miguel:" + hasher.hash(miguelPassword) + "\n"
+                    + "bob:" + hasher.hash(bobPassword) + "\n");
+        } finally {
+            PasswordHasher.clear(miguelPassword);
+            PasswordHasher.clear(bobPassword);
+        }
     }
 
     private static String login(Frame frame, String username, String password) throws Exception {

@@ -4,9 +4,9 @@ import chat.auth.User;
 import chat.concurrent.LockedMap;
 
 import java.time.Duration;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * Thread-safe registry of authenticated sessions indexed by token value.
@@ -24,11 +24,6 @@ public final class SessionRegistry {
         return create(user, Session.DEFAULT_OUTBOUND_CAPACITY, DEFAULT_TOKEN_TTL);
     }
 
-    /** Creates a session with a custom outbound queue capacity and default token TTL. */
-    public Session create(User user, int outboundCapacity) {
-        return create(user, outboundCapacity, DEFAULT_TOKEN_TTL);
-    }
-
     /**
      * Creates and registers a new session.
      *
@@ -42,6 +37,8 @@ public final class SessionRegistry {
         while (true) {
             Session session = new Session(user, outboundCapacity, tokenTtl);
             Session existing = byToken.putIfAbsent(session.tokenValue(), session);
+            // Collision is cryptographically improbable, but retrying makes the
+            // registry correct without relying on probability for uniqueness.
             if (existing == null) return session;
         }
     }
@@ -75,22 +72,17 @@ public final class SessionRegistry {
         return removed;
     }
 
-    /** Removes and closes this session, if it is currently registered. */
-    public boolean remove(Session session) {
-        Objects.requireNonNull(session, "session");
-        Session removed = remove(session.tokenValue());
-        return removed == session;
-    }
-
-    /** Removes every expired or closed session and returns the number removed. */
-    public int removeExpired() {
-        int removed = 0;
+    /** Removes and closes every expired or closed session. */
+    public List<Session> removeExpired() {
+        List<Session> removed = new ArrayList<>();
+        // keys() is a defensive snapshot, so removing entries during iteration
+        // cannot invalidate the traversal.
         for (String token : byToken.keys()) {
             Session session = byToken.get(token);
             if (session != null && (session.tokenExpired() || session.isClosed())) {
                 if (byToken.remove(token) != null) {
                     session.close();
-                    removed++;
+                    removed.add(session);
                 }
             }
         }
@@ -99,14 +91,6 @@ public final class SessionRegistry {
 
     public int size() {
         return byToken.size();
-    }
-
-    public Set<String> tokens() {
-        return byToken.keys();
-    }
-
-    public Map<String, Session> snapshot() {
-        return byToken.snapshot();
     }
 
     private static String normalizeToken(String tokenValue) {

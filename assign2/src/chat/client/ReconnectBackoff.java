@@ -25,10 +25,13 @@ public final class ReconnectBackoff {
     public long nextDelayMillis() {
         long max = capMillis;
         if (attempts < 30) {
+            // Stop shifting before long overflow can wrap into a negative value.
             long candidate = baseMillis << attempts;
             max = Math.min(capMillis, Math.max(baseMillis, candidate));
         }
         attempts++;
+        // Full jitter spreads simultaneous reconnecting clients across the
+        // complete interval [0, max], avoiding synchronized retry bursts.
         return random.nextLong(max + 1L);
     }
 

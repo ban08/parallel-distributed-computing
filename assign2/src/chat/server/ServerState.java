@@ -1,7 +1,6 @@
 package chat.server;
 
 import chat.ai.OllamaClient;
-import chat.auth.PasswordHasher;
 import chat.auth.User;
 import chat.auth.UserRegistry;
 import chat.auth.UsersFile;
@@ -16,8 +15,9 @@ import java.util.Objects;
 /**
  * Shared server state.
  *
- * C1 keeps process-wide registries in one place so every TCP connection handler
- * uses the same users and sessions tables.
+ * Process-wide registries live here so every per-socket connection handler sees
+ * the same users, resumable sessions, and rooms. The object also centralizes
+ * startup wiring for persistent users and the local Ollama endpoint.
  */
 public final class ServerState {
     public static final Path DEFAULT_USERS_FILE = Path.of("data", "users.txt");
@@ -28,23 +28,15 @@ public final class ServerState {
     private final UserRegistry users;
     private final SessionRegistry sessions;
     private final RoomRegistry rooms;
-    private final OllamaClient ollamaClient; // null if AI rooms disabled
+    private final OllamaClient ollamaClient;
 
-    public ServerState(Path usersPath, UserRegistry users, SessionRegistry sessions) {
-        this(usersPath, users, sessions, new RoomRegistry(), null);
-    }
-
-    public ServerState(Path usersPath, UserRegistry users, SessionRegistry sessions, RoomRegistry rooms) {
-        this(usersPath, users, sessions, rooms, null);
-    }
-
-    public ServerState(Path usersPath, UserRegistry users, SessionRegistry sessions,
-                       RoomRegistry rooms, OllamaClient ollamaClient) {
+    private ServerState(Path usersPath, UserRegistry users, SessionRegistry sessions,
+                        RoomRegistry rooms, OllamaClient ollamaClient) {
         this.usersPath = Objects.requireNonNull(usersPath, "usersPath");
         this.users = Objects.requireNonNull(users, "users");
         this.sessions = Objects.requireNonNull(sessions, "sessions");
         this.rooms = Objects.requireNonNull(rooms, "rooms");
-        this.ollamaClient = ollamaClient; // nullable — AI rooms are optional
+        this.ollamaClient = Objects.requireNonNull(ollamaClient, "ollamaClient");
     }
 
     /** Loads users from disk and creates empty session registry. */
@@ -60,9 +52,7 @@ public final class ServerState {
      */
     public static ServerState load(Path usersPath, String ollamaUrl, String ollamaModel) throws IOException {
         Path path = (usersPath == null) ? DEFAULT_USERS_FILE : usersPath;
-        PasswordHasher hasher = new PasswordHasher();
-        UsersFile usersFile = new UsersFile(path, hasher);
-        usersFile.createDemoUsersIfMissing();
+        UsersFile usersFile = new UsersFile(path);
         UserRegistry userRegistry = UserRegistry.loadFrom(usersFile);
 
         String url = (ollamaUrl != null && !ollamaUrl.isBlank()) ? ollamaUrl : DEFAULT_OLLAMA_URL;
@@ -88,7 +78,7 @@ public final class ServerState {
         return rooms;
     }
 
-    /** Returns the Ollama client, or null if AI rooms are not configured. */
+    /** Returns the local Ollama adapter used for AI rooms. */
     public OllamaClient ollamaClient() {
         return ollamaClient;
     }
@@ -96,6 +86,7 @@ public final class ServerState {
     /** Returns a newly-created session on successful login, otherwise null. */
     public Session login(String username, char[] password) {
         Objects.requireNonNull(password, "password");
+        cleanupExpiredSessions();
         try {
             if (!users.verify(username, password)) return null;
             User user = users.get(username);
@@ -108,11 +99,29 @@ public final class ServerState {
 
     /** Returns an existing live session for a reconnecting token, otherwise null. */
     public Session resume(String token) {
+        cleanupExpiredSessions();
         return sessions.lookup(token);
     }
 
-    /** Registers a new user in the in-memory registry and backing users file. */
-    public boolean register(String username, char[] password) throws IOException {
-        return users.register(username, password);
+    /** Invalidates a session after an explicit client logout. */
+    public void logout(Session session) {
+        Objects.requireNonNull(session, "session");
+        Session removed = sessions.remove(session.tokenValue());
+        if (removed != null) detachFromRoom(removed);
+    }
+
+    /** Opportunistically reaps expired sessions whenever authentication is used. */
+    private int cleanupExpiredSessions() {
+        var removed = sessions.removeExpired();
+        for (Session session : removed) detachFromRoom(session);
+        return removed.size();
+    }
+
+    private void detachFromRoom(Session session) {
+        String roomName = session.leaveRoom();
+        if (roomName == null) return;
+
+        var room = rooms.get(roomName);
+        if (room != null) room.leave(session);
     }
 }

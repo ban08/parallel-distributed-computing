@@ -10,7 +10,14 @@ import java.util.Objects;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
-/** PBKDF2 password hashing. Stored format: pbkdf2$iterations$saltBase64$hashBase64. */
+/**
+ * PBKDF2 password hashing.
+ *
+ * Stored format: {@code pbkdf2$iterations$saltBase64$hashBase64}. The encoded
+ * value contains everything needed for verification but never contains the
+ * original password. A fresh random salt prevents equal passwords from
+ * producing equal stored strings.
+ */
 public final class PasswordHasher {
     private static final String ALGORITHM = "PBKDF2WithHmacSHA256";
     private static final String PREFIX = "pbkdf2";
@@ -20,6 +27,7 @@ public final class PasswordHasher {
 
     private final SecureRandom random = new SecureRandom();
 
+    /** Hashes a new password with a fresh random salt. */
     public String hash(char[] password) {
         requirePassword(password);
         byte[] salt = new byte[SALT_BYTES];
@@ -30,6 +38,7 @@ public final class PasswordHasher {
                 + Base64.getEncoder().encodeToString(digest);
     }
 
+    /** Recomputes the encoded PBKDF2 digest and compares it in constant time. */
     public boolean verify(char[] password, String storedHash) {
         requirePassword(password);
         Objects.requireNonNull(storedHash, "storedHash");
@@ -38,6 +47,8 @@ public final class PasswordHasher {
         if (parts.length != 4 || !PREFIX.equals(parts[0])) return false;
 
         try {
+            // Read parameters from the stored value so hashes remain verifiable
+            // if the configured work factor changes in a future version.
             int iterations = Integer.parseInt(parts[1]);
             byte[] salt = Base64.getDecoder().decode(parts[2]);
             byte[] expected = Base64.getDecoder().decode(parts[3]);
@@ -48,6 +59,7 @@ public final class PasswordHasher {
         }
     }
 
+    /** Best-effort removal of plaintext password characters after use. */
     public static void clear(char[] password) {
         if (password != null) Arrays.fill(password, '\0');
     }
@@ -70,6 +82,8 @@ public final class PasswordHasher {
     private static boolean constantTimeEquals(byte[] a, byte[] b) {
         if (a.length != b.length) return false;
         int diff = 0;
+        // Do not return on the first mismatch: runtime must not reveal how many
+        // prefix bytes were correct.
         for (int i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
         return diff == 0;
     }

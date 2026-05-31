@@ -10,9 +10,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 /** Executable room checks: system messages, history, snapshots, and broadcasts. */
@@ -23,9 +21,17 @@ public final class RoomBroadcastStress {
 
     public static void main(String[] args) throws Exception {
         smokeRoomTimeline();
+        smokeOverflowDisconnect();
         stressConcurrentBroadcast();
         smokeRegistry();
         System.out.println("PASS RoomBroadcastStress");
+    }
+
+    private static void smokeOverflowDisconnect() {
+        Room room = new Room("overflow");
+        RejectingSubscriber slow = new RejectingSubscriber();
+        room.join(slow);
+        expect(slow.disconnects, 1L, "overflow disconnect count");
     }
 
     private static void smokeRoomTimeline() {
@@ -40,23 +46,17 @@ public final class RoomBroadcastStress {
         room.leave(bob);
 
         if (posted.seq() != 3L) throw new AssertionError("bad user message seq: " + posted.seq());
-        expect(room.latestSeq(), 4L, "latest seq");
-        expect(room.subscriberCount(), 1L, "subscriber count");
 
-        List<RoomMessage> all = room.historyAfter(0L, 100);
+        List<RoomMessage> all = room.recentHistory(100);
         expect(all.size(), 4L, "history size");
         expectText(all.get(0), "alice entered the room", true);
         expectText(all.get(1), "bob entered the room", true);
         expectText(all.get(2), "hello bob", false);
         expectText(all.get(3), "bob left the room", true);
 
-        List<RoomMessage> tail = room.historyAfter(2L, 10);
-        expect(tail.size(), 2L, "historyAfter size");
-        expect(tail.get(0).seq(), 3L, "historyAfter first seq");
-
-        List<RoomSubscriber> snapshot = room.subscribersSnapshot();
-        snapshot.clear();
-        expect(room.subscriberCount(), 1L, "subscriber snapshot must be defensive");
+        List<RoomMessage> tail = room.recentHistory(2);
+        expect(tail.size(), 2L, "recent history size");
+        expect(tail.get(0).seq(), 3L, "recent history first seq");
 
         if (alice.countFramesStartingWith("SYS ") != 3) {
             throw new AssertionError("alice should see three system messages");
@@ -105,31 +105,30 @@ public final class RoomBroadcastStress {
             }
         }
 
-        List<RoomMessage> history = room.historyAfter(0L, 10_000);
+        List<RoomMessage> history = room.recentHistory(10_000);
         expect(history.size(), SUBSCRIBERS + expectedUserMessages, "stress history size");
         long previous = 0L;
-        Set<Long> seqs = new HashSet<>();
+        List<String> expectedFrames = new ArrayList<>();
         for (RoomMessage message : history) {
             if (message.seq() <= previous) {
                 throw new AssertionError("history out of order at seq " + message.seq());
             }
-            if (!seqs.add(message.seq())) {
-                throw new AssertionError("duplicate seq " + message.seq());
-            }
+            if (!message.system()) expectedFrames.add(message.toFrame());
             previous = message.seq();
         }
-        expect(room.latestSeq(), SUBSCRIBERS + expectedUserMessages, "stress latest seq");
+        for (FakeSubscriber subscriber : subscribers) {
+            if (!expectedFrames.equals(subscriber.framesStartingWith("MSG "))) {
+                throw new AssertionError(subscriber.username() + " observed messages out of order");
+            }
+        }
     }
 
     private static void smokeRegistry() {
         RoomRegistry registry = new RoomRegistry();
         Room alpha = registry.create("Alpha");
-        Room beta = registry.create("Beta", RoomKind.AI);
 
         if (registry.get("Alpha") != alpha) throw new AssertionError("Alpha lookup failed");
-        if (registry.get("Beta") != beta) throw new AssertionError("Beta lookup failed");
-        if (beta.kind() != RoomKind.AI) throw new AssertionError("Beta should be AI kind");
-        if (!List.of("Alpha", "Beta[AI]").equals(registry.names())) {
+        if (!List.of("Alpha").equals(registry.names())) {
             throw new AssertionError("bad registry names: " + registry.names());
         }
 
@@ -189,6 +188,38 @@ public final class RoomBroadcastStress {
             } finally {
                 lock.unlock();
             }
+        }
+
+        List<String> framesStartingWith(String prefix) {
+            lock.lock();
+            try {
+                List<String> selected = new ArrayList<>();
+                for (String frame : frames) {
+                    if (frame.startsWith(prefix)) selected.add(frame);
+                }
+                return selected;
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    private static final class RejectingSubscriber implements RoomSubscriber {
+        private int disconnects;
+
+        @Override
+        public String username() {
+            return "slow";
+        }
+
+        @Override
+        public boolean enqueue(String frame) {
+            return false;
+        }
+
+        @Override
+        public void disconnect() {
+            disconnects++;
         }
     }
 

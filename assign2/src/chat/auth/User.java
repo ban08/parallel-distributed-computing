@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 public record User(String username, String passwordHash) {
     private static final Pattern USERNAME = Pattern.compile("[A-Za-z0-9_]{3,32}");
 
+    /** Compact record constructor: normalize and validate every created user. */
     public User {
         username = normalizeUsername(username);
         Objects.requireNonNull(passwordHash, "passwordHash");

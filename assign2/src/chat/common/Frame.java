@@ -10,6 +10,10 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * UTF-8, newline-delimited frame I/O over a Socket.
+ *
+ * TCP is a byte stream, not a message protocol. Newline termination is this
+ * project's explicit framing rule: one command or event per UTF-8 line.
+ *
  * Reading and writing from different threads on the same Frame is safe
  * (different underlying streams). Concurrent writes from multiple threads
  * are NOT safe — funnel writes through a single thread.
@@ -39,6 +43,8 @@ public final class Frame implements AutoCloseable {
         }
         out.write(line);
         out.write('\n');
+        // Do not wait for the buffer to fill: chat events should become visible
+        // to an idle peer immediately.
         out.flush();
     }
 

@@ -9,7 +9,13 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
-/** Reads server frames continuously so room messages arrive while input is idle. */
+/**
+ * Reads server frames continuously so room messages arrive while input is idle.
+ *
+ * State transition and presentation are intentionally separate: first update
+ * {@link ClientState}, then render a friendly CLI message. This keeps automatic
+ * reconnect state correct even when a frame has no special presentation rule.
+ */
 public final class ClientReader implements Runnable {
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
@@ -18,18 +24,12 @@ public final class ClientReader implements Runnable {
     private final ClientState state;
     private final PrintStream out;
     private final PrintStream err;
-    private final boolean stopStateOnEnd;
 
     public ClientReader(Frame frame, ClientState state, PrintStream out, PrintStream err) {
-        this(frame, state, out, err, true);
-    }
-
-    public ClientReader(Frame frame, ClientState state, PrintStream out, PrintStream err, boolean stopStateOnEnd) {
         this.frame = Objects.requireNonNull(frame, "frame");
         this.state = Objects.requireNonNull(state, "state");
         this.out = Objects.requireNonNull(out, "out");
         this.err = Objects.requireNonNull(err, "err");
-        this.stopStateOnEnd = stopStateOnEnd;
     }
 
     @Override
@@ -42,26 +42,21 @@ public final class ClientReader implements Runnable {
             }
         } catch (IOException e) {
             if (state.isRunning()) err.println("[client] connection closed: " + e.getMessage());
-        } finally {
-            if (stopStateOnEnd) state.stop();
         }
     }
 
+    /** Converts wire-protocol frames into human-oriented terminal output. */
     static String formatServerFrame(String line) {
         Objects.requireNonNull(line, "line");
 
-        if ("PONG".equals(line)) return "[server] pong";
         if ("BYE".equals(line)) return "[server] bye";
         if (line.startsWith("ERR ")) return "[error] " + line.substring("ERR ".length());
-        if (line.startsWith("OK REGISTERED ")) return "[auth] registered " + line.substring("OK REGISTERED ".length());
         if (line.startsWith("OK TOKEN ")) return "[auth] logged in. token: " + line.substring("OK TOKEN ".length());
         if (line.startsWith("OK RESUMED ")) return "[auth] resumed as " + line.substring("OK RESUMED ".length());
-        if (line.startsWith("OK USER ")) return "[auth] " + line.substring("OK USER ".length());
         if (line.startsWith("OK CREATED_AI ")) return "[rooms] created AI room " + line.substring("OK CREATED_AI ".length());
         if (line.startsWith("OK CREATED ")) return "[rooms] created " + line.substring("OK CREATED ".length());
         if (line.startsWith("JOINED ")) return "[room] joined " + line.substring("JOINED ".length());
         if (line.startsWith("LEFT ")) return "[room] left " + line.substring("LEFT ".length());
-        if (line.startsWith("HIST ")) return "[history] replaying " + line.substring("HIST ".length()) + " frame(s)";
         if (line.startsWith("SYS ")) return "* " + line.substring("SYS ".length());
         if (line.startsWith("ROOMS ")) return formatRooms(line);
         if (line.startsWith("MSG ")) return formatMessage(line);
@@ -77,6 +72,8 @@ public final class ClientReader implements Runnable {
     }
 
     private static String formatMessage(String line) {
+        // MSG has four fields; the fourth consumes the remaining text so spaces
+        // inside a chat message are preserved.
         String[] parts = line.split("\\s+", 4);
         if (parts.length != 4) return "< " + line;
 

@@ -4,25 +4,25 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Loads and stores users in a simple UTF-8 text file: username:passwordHash. */
+/**
+ * Loads users from a simple UTF-8 text file: username:passwordHash.
+ */
 public final class UsersFile {
     private final Path path;
-    private final PasswordHasher hasher;
 
-    public UsersFile(Path path, PasswordHasher hasher) {
+    public UsersFile(Path path) {
         this.path = Objects.requireNonNull(path, "path");
-        this.hasher = Objects.requireNonNull(hasher, "hasher");
     }
 
+    /** Parses the complete users file, rejecting malformed or duplicate rows. */
     public Map<String, User> load() throws IOException {
         Map<String, User> users = new LinkedHashMap<>();
-        if (!Files.exists(path)) return users;
+        if (!Files.exists(path)) throw new IOException("users file not found: " + path);
 
         List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
         for (int i = 0; i < lines.size(); i++) {
@@ -40,48 +40,5 @@ public final class UsersFile {
             }
         }
         return users;
-    }
-
-    public void save(Map<String, User> users) throws IOException {
-        Objects.requireNonNull(users, "users");
-        Path parent = path.getParent();
-        if (parent != null) Files.createDirectories(parent);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("# username:passwordHash\n");
-        for (User user : users.values()) {
-            sb.append(user.username()).append(':').append(user.passwordHash()).append('\n');
-        }
-
-        Path tmp = path.resolveSibling(path.getFileName() + ".tmp");
-        Files.writeString(tmp, sb.toString(), StandardCharsets.UTF_8);
-        Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-    }
-
-    public boolean addUser(String username, char[] password) throws IOException {
-        String normalized = User.normalizeUsername(username);
-        Map<String, User> users = load();
-        if (users.containsKey(normalized)) return false;
-        users.put(normalized, new User(normalized, hasher.hash(password)));
-        save(users);
-        return true;
-    }
-
-    /** Creates demo users only when the file does not exist yet. */
-    public void createDemoUsersIfMissing() throws IOException {
-        if (Files.exists(path)) return;
-
-        Map<String, User> users = new LinkedHashMap<>();
-        addDemo(users, "alice", "alice123".toCharArray());
-        addDemo(users, "bob", "bob123".toCharArray());
-        save(users);
-    }
-
-    private void addDemo(Map<String, User> users, String username, char[] password) {
-        try {
-            users.put(username, new User(username, hasher.hash(password)));
-        } finally {
-            PasswordHasher.clear(password);
-        }
     }
 }

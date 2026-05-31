@@ -15,10 +15,8 @@ public interface RoomSubscriber {
     boolean enqueue(String frame);
 
     /**
-     * Enqueues a room timeline message. Sessions override this to keep sequence
-     * metadata for reconnect replay; simple test subscribers can use the frame.
+     * Disconnects the current transport after outbound overflow. Implementations
+     * that are not backed by a transport can ignore this callback.
      */
-    default boolean enqueueRoomMessage(String roomName, RoomMessage message) {
-        return enqueue(message.toFrame());
-    }
+    default void disconnect() {}
 }

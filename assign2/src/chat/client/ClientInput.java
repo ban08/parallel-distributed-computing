@@ -6,16 +6,7 @@ import java.io.PrintStream;
 import java.util.Locale;
 import java.util.Objects;
 
-/**
- * Reads user-friendly slash commands and sends protocol frames.
- *
- * Acts as the hand-written client stub in the sense of 2rpc.pdf slide 11:
- * parseUserLine marshals a user command (e.g. "/login alice pw") into a wire
- * frame ("LOGIN alice pw") and ConnectionManager.send transmits it. The
- * matching "block for reply / unmarshal" step is decoupled: server frames are
- * read asynchronously by ClientReader, which also handles unsolicited room
- * broadcasts that classical RPC has no model for.
- */
+/** Reads user-friendly slash commands and sends protocol frames. */
 public final class ClientInput implements Runnable {
     private final ConnectionManager connection;
     private final BufferedReader input;
@@ -47,7 +38,8 @@ public final class ClientInput implements Runnable {
                 if (command.localMessage() != null) out.println(command.localMessage());
                 if (command.protocolLine() == null) continue;
 
-                if (command.loginUsername() != null) state.rememberLoginAttempt(command.loginUsername());
+                // TOKEN replies arrive asynchronously in ClientReader. Record a
+                // manually supplied capability so it can become reconnect state.
                 if (command.resumeToken() != null) state.rememberResumeAttempt(command.resumeToken());
                 if (!connection.send(command.protocolLine())) {
                     out.println("[client] not connected; command was not sent.");
@@ -62,6 +54,12 @@ public final class ClientInput implements Runnable {
         }
     }
 
+    /**
+     * Translates one terminal line into either a local action or a wire frame.
+     *
+     * Plain text becomes MSG only after the client has observed JOINED. Slash
+     * commands are marshalled explicitly so protocol syntax stays centralized.
+     */
     static ClientCommand parseUserLine(String line, ClientState state) {
         Objects.requireNonNull(line, "line");
         Objects.requireNonNull(state, "state");
@@ -82,28 +80,17 @@ public final class ClientInput implements Runnable {
 
         return switch (command) {
             case "help" -> ClientCommand.local(helpText());
-            case "register" -> registerCommand(tail);
             case "login" -> loginCommand(tail);
             case "resume", "token" -> resumeCommand(tail);
             case "list" -> noTail("LIST", tail, "usage: /list");
-            case "create" -> requiredTail("CREATE", tail, "usage: /create <room> [AI <prompt>]");
+            case "create" -> requiredTail("CREATE", tail, "usage: /create <room>");
             case "create_ai" -> createAICommand(tail);
             case "join" -> requiredTail("JOIN", tail, "usage: /join <room>");
             case "msg" -> requiredTail("MSG", tail, "usage: /msg <text>");
             case "leave" -> noTail("LEAVE", tail, "usage: /leave");
-            case "ping" -> noTail("PING", tail, "usage: /ping");
-            case "whoami" -> noTail("WHOAMI", tail, "usage: /whoami");
             case "quit" -> quitCommand(tail);
             default -> ClientCommand.local("[client] unknown command /" + command + ". Type /help.");
         };
-    }
-
-    private static ClientCommand registerCommand(String tail) {
-        String[] args = tail.split("\\s+", 2);
-        if (tail.isBlank() || args.length != 2 || args[1].isBlank()) {
-            return ClientCommand.local("usage: /register <username> <password>");
-        }
-        return ClientCommand.send("REGISTER " + args[0] + " " + args[1]);
     }
 
     private static ClientCommand loginCommand(String tail) {
@@ -111,12 +98,12 @@ public final class ClientInput implements Runnable {
         if (tail.isBlank() || args.length != 2 || args[1].isBlank()) {
             return ClientCommand.local("usage: /login <username> <password>");
         }
-        return new ClientCommand("LOGIN " + args[0] + " " + args[1], null, false, args[0], null);
+        return ClientCommand.send("LOGIN " + args[0] + " " + args[1]);
     }
 
     private static ClientCommand resumeCommand(String tail) {
         if (tail.isBlank()) return ClientCommand.local("usage: /resume <token>");
-        return new ClientCommand("TOKEN " + tail, null, false, null, tail);
+        return new ClientCommand("TOKEN " + tail, null, false, tail);
     }
 
     private static ClientCommand createAICommand(String tail) {
@@ -125,20 +112,15 @@ public final class ClientInput implements Runnable {
         }
 
         int separator = tail.indexOf(" -- ");
-        if (separator >= 0) {
-            String roomName = tail.substring(0, separator).trim();
-            String prompt = tail.substring(separator + " -- ".length()).trim();
-            if (roomName.isEmpty() || prompt.isEmpty()) {
-                return ClientCommand.local("usage: /create_ai <room> -- <prompt>");
-            }
-            return ClientCommand.send("CREATE_AI " + roomName + " -- " + prompt);
-        }
-
-        String[] args = tail.split("\\s+", 2);
-        if (args.length < 2 || args[1].isBlank()) {
+        if (separator < 0) {
             return ClientCommand.local("usage: /create_ai <room> -- <prompt>");
         }
-        return ClientCommand.send("CREATE_AI " + tail);
+        String roomName = tail.substring(0, separator).trim();
+        String prompt = tail.substring(separator + " -- ".length()).trim();
+        if (roomName.isEmpty() || prompt.isEmpty()) {
+            return ClientCommand.local("usage: /create_ai <room> -- <prompt>");
+        }
+        return ClientCommand.send("CREATE_AI " + roomName + " -- " + prompt);
     }
 
     private static ClientCommand requiredTail(String protocolCommand, String tail, String usage) {
@@ -153,36 +135,36 @@ public final class ClientInput implements Runnable {
 
     private static ClientCommand quitCommand(String tail) {
         if (!tail.isBlank()) return ClientCommand.local("usage: /quit");
-        return new ClientCommand("QUIT", null, true, null, null);
+        return new ClientCommand("QUIT", null, true, null);
     }
 
     private static String helpText() {
         return """
                 commands:
-                  /register <username> <password>
                   /login <username> <password>
                   /resume <token>
                   /list
                   /create <room>
-                  /create <room> AI <prompt>
                   /create_ai <room> -- <prompt>
                   /join <room>
                   /msg <text>
                   /leave
-                  /whoami
-                  /ping
                   /quit
                 after joining a room, plain text is sent as a message""";
     }
 
+    /**
+     * Parser result. Only one of protocolLine and localMessage is normally set;
+     * resume metadata supports later asynchronous state confirmation.
+     */
     record ClientCommand(String protocolLine, String localMessage, boolean stopAfterSend,
-                         String loginUsername, String resumeToken) {
+                         String resumeToken) {
         static ClientCommand send(String protocolLine) {
-            return new ClientCommand(protocolLine, null, false, null, null);
+            return new ClientCommand(protocolLine, null, false, null);
         }
 
         static ClientCommand local(String localMessage) {
-            return new ClientCommand(null, localMessage, false, null, null);
+            return new ClientCommand(null, localMessage, false, null);
         }
     }
 }
