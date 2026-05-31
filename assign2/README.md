@@ -22,13 +22,16 @@ reconnect after broken connections. T
 - **Isolated AI rooms.** `CREATE_AI <room> -- <prompt>` creates a room with one
   sequential Ollama worker and retained bounded context.
 
-## Build and run tests
-
-From `assign2/`:
+## Build, run tests, and demo
 
 ```bash
-./scripts/run.sh build
-./scripts/run.sh test
+./scripts/run.sh build   
+./scripts/run.sh test    
+```
+
+```bash
+java -cp out chat.server.ChatServer 8443 data/users.txt
+java -cp out chat.client.ChatClient localhost 8443
 ```
 
 ## Demo users:
