@@ -6,15 +6,12 @@ so its concurrency decisions are easy to explain and verify.
 
 ## Demo
 
-[![Open the captioned distributed chat demonstration](doc/demo/distributed-chat-demo-preview.jpg)](doc/demo/distributed-chat-demo.mp4)
+[![Captioned distributed-chat demonstration](doc/demo/distributed-chat-demo-preview.jpg)](doc/demo/distributed-chat-demo.mp4)
 
-[Play the captioned demonstration](doc/demo/distributed-chat-demo.mp4)
-
-![Captioned distributed chat demonstration](doc/demo/distributed-chat-demo.mp4)
-
-The English subtitles are burned into the MP4, so the video is ready to present
-without loading a separate subtitle file. GitLab renders the MP4 above as an
-inline player; local Markdown previews can use the poster or direct link.
+[`doc/demo/distributed-chat-demo.mp4`](doc/demo/distributed-chat-demo.mp4) is
+the single deliverable: English captions are burned into the MP4 in the
+bottom-left corner so the three terminals stay fully visible, and no
+separate subtitle file needs to ship with it.
 
 ## Main Design Decisions
 
