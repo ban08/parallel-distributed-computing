@@ -1,0 +1,4 @@
+
+# build output
+*.class
+assign2/out/
